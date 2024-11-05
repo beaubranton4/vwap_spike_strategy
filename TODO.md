@@ -1,22 +1,24 @@
-- SCREENER NEEDS TO PASS LIST OF STOCKS, ENTRIES, EXITS, AND BET SIZES
-    -Ensure that the screener is working and aligned with same criteria as backtest. CAN TRY DYNAMIC SCREENER
-    - SET SCREENER BACK TO CURRENT DAY AND BACKTEST BACK TO ORIGINSL
-    CLEANUP FOLDERS AND CODE
-    -Really understand backtest buying and selling logic to replicate in streamer bot
-    
-
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-
-    - get the buys working based on criteria
-    - Make sure stock doesn't spike above VWAP pre-market   
-    - get the sells working based on criteria
-    - make sure that the buys and sells are working with the same criteria as the screener
-    - put all of this into a function
+    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
+    - for every output of the stream, we must create a condition checker to tell it if it should buy/sell
+    - If ticker crosses buy price, use short_stock_function
+    - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
+        - Make sure to check if the stock is eligible to be shorted
+        - Make sure to check stock has not already been shorted
+        - Market vs limit order
+    - Must create sell function that takes in (bought price, sell price, time threshold to sell)
+        - Ensure stock has been shorted first
+        - Sell at stop
+        - Sell at take
+        - Sell at time threshold
+    - Tie all these pieces together
+    - Increase number of orders per minute
 
 - BUILD THEM AS AN AUTOMATED STRATEGY
     - Change Account Size to pull from account api in screener 
     Store Tickers w Buy/Sell Prices in a database
     - Feed that into a streamer that buys and sells based on the criteria
+    - Put them all together and schedule to run at a specific time using Mage or Airflow or something
 
 - OTHER TO-DO's
     - Seperate functions and input variables into different files
