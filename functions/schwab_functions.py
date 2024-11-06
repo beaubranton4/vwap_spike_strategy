@@ -130,11 +130,15 @@ def get_stock_price_history(symbol, access_token, period_type, period, frequency
     ############################FUNCTIONS FOR PLACING ORDERS AND MONITORING ACCOUNT#############################
 
 def get_account_balance():
+
     # Initialize client
     client = schwabdev.Client(
         os.getenv('appKey'),
         os.getenv('appSecret'),
-        os.getenv('callback_url')
+        os.getenv('callback_url'),
+        tokens_file="tokens.json", 
+        timeout=10, 
+        update_tokens_auto=True
     )
 
     try:

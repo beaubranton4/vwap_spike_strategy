@@ -11,6 +11,7 @@ import time
 import json
 import os
 import signal
+from functions import *
 
 #load environment
 dotenv.load_dotenv()

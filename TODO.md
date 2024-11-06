@@ -1,6 +1,13 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
     - Make screener it's own function
-    - Build orchestrator:
+    - Learn about access tokens and how to auto authenticate either with my function or with the schwabdev api
+    - I think the config file is trying to authenticate in the get_account_balance function and it fails, but auto_authenticate is working so the screener is working.
+    - Build streamer/orchestrator:
+        use this prompt:
+
+I'd like to turn this into a function that takes in multiple inputs and acts as an orchestrator. I want it to take as input a Ticker, a Target Entry Price, a Buy Time Threshold, a Stop Loss Price, a Profit Take Price, a Sell Time Threshold. 
+
+I want it to run the existing stream for that 'Ticker' and if the price goes above the Target Entry Price, before the Buy Time Threshold i would like to print('SHORT STOCK FUNCTION INITIATED, bought [quantity] shares of [ticker] for a total price of [quantity*ticker price]'). THEN if that message was triggered, i want it to continue streaming until the stop loss price, or the profit take price, or the sell time threshold is hit. I only want to short the stock once, and will always sell the stock by the sell time no matter what.
 
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
     - for every output of the stream, we must create a condition checker to tell it if it should buy/sell
@@ -34,6 +41,9 @@
         - functions.py (for functions)
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz
     - See if there's a way we can filter out stocks hard to borrow or have high interest rates (based on float and market cap?)
+    - Maybe i can keep my own DB of historical data for stocks and use that to run my screener?
+        - Then the screener would just need to pull data from today and append to my DB
+        - It would make the screener faster
     
 
 

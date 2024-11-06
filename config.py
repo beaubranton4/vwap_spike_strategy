@@ -38,9 +38,10 @@ need_extended_hours_data = 'true'  # Current value
 need_previous_close = 'true'  # Current value
 
 ######################################## TESTING COMBINATION OF INPUTS FOR STRATEGY  ########################################
-TOTAL_CASH = 1  # Using get_account_balance function to retrieve account balance
-ALLOCATION = [0.1]
-BET_SIZE = ALLOCATION  # FIXED
+ACCOUNT_SIZE = 1  # Using get_account_balance function to retrieve account balance
+ALLOCATION = 0.1
+
+BET_SIZE = [ALLOCATION]  # FIXED
 STOP = [0.1]  # FIXED # Removed .05
 TARGET = [0.05]  # FIXED
 

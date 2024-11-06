@@ -1,9 +1,5 @@
-# Ignore environment variable files
 .env
-
-# Ignore Python cache files
 __pycache__/
 *.pyc
-
-# Ignore other sensitive files
 secrets.json
+*tokens.json*

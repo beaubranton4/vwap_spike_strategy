@@ -16,6 +16,10 @@ from .schwab_functions import (
     get_cash_balance
 )
 
+from .screener_functions import (
+    run_vwap_spike_screener
+)
+
 # Define __all__ to specify what is imported with *
 __all__ = [
     'next_business_day',
@@ -25,5 +29,6 @@ __all__ = [
     'auto_authenticate',
     'get_stock_price_history',
     'get_account_balance',
-    'get_cash_balance'
+    'get_cash_balance',
+    'run_vwap_spike_screener'
 ]
