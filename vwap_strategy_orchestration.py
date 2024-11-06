@@ -3,6 +3,7 @@
 
 from functions import *
 from config import *
+from functions.execute_strategy import ExecuteStrategy
 
 def main():
     account_balance = get_account_balance()
@@ -28,8 +29,19 @@ def main():
     #     stop_index=stop_index,
     #     target_index=target_index
     # )
-    
     # print(f"Found {len(screener_results)} potential trades")
+
+    #Test an already established screener file
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    screener_results = pd.read_excel(f'../screener/daily_screener_signals/{tomorrow}.xlsx')
+    # print(screener_results.head())
+    
+    strategy = ExecuteStrategy()
+    strategy.execute_vwap_spike_strategy(screener_results)
+
+    ##NEED TO FIX THE MARKETDATASTREAMER FROM EXECUTE STRATEGY FILE
+    
+    
 
 if __name__ == "__main__":
     main()

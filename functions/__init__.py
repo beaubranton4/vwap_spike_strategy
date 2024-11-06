@@ -20,6 +20,10 @@ from .screener_functions import (
     run_vwap_spike_screener
 )
 
+from .execute_strategy import (
+    ExecuteStrategy
+)
+
 # Define __all__ to specify what is imported with *
 __all__ = [
     'next_business_day',
@@ -30,5 +34,6 @@ __all__ = [
     'get_stock_price_history',
     'get_account_balance',
     'get_cash_balance',
-    'run_vwap_spike_screener'
+    'run_vwap_spike_screener',
+    'ExecuteStrategy'
 ]

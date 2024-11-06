@@ -4,47 +4,61 @@ import os
 import requests
 from datetime import datetime, timedelta
 import schwabdev
+import traceback
 
 ######################################### SCHWAB API FUNCTIONS ########################################################
 
 def auto_authenticate(appKey, appSecret):
-    token_file = 'schwab_token.json'
-    
-    # Check if token file exists and is not expired
-    if os.path.exists(token_file):
-        with open(token_file, 'r') as f:
-            token_data = json.load(f)
+    try:
+        # Use absolute path or correct relative path
+        token_file = 'auth/tokens.json'  # Adjust this path based on your project structure
         
-        expires_at = datetime.fromisoformat(token_data['expires_at'])
-        if expires_at > datetime.now():
-            return token_data['access_token']
-    
-    # If no valid token, authenticate
-    headers = {
-        'Authorization': f'Basic {base64.b64encode(bytes(f"{appKey}:{appSecret}", "utf-8")).decode("utf-8")}',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-    data = {
-        'grant_type': 'client_credentials',
-        'scope': 'openid'
-    }
+        # Check if token file exists and is not expired
+        if os.path.exists(token_file):
+            try:
+                with open(token_file, 'r') as f:
+                    token_data = json.load(f)
+                
+                if 'expires_at' in token_data:
+                    expires_at = datetime.fromisoformat(token_data['expires_at'])
+                    if expires_at > datetime.now():
+                        return token_data['access_token']
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                print(f"Error reading token file: {e}")
+                # Continue to get new token if there's an error reading the file
+        
+        # If no valid token, authenticate
+        headers = {
+            'Authorization': f'Basic {base64.b64encode(bytes(f"{appKey}:{appSecret}", "utf-8")).decode("utf-8")}',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        data = {
+            'grant_type': 'client_credentials',
+            'scope': 'openid'
+        }
 
-    response = requests.post('https://api.schwabapi.com/v1/oauth/token', headers=headers, data=data)
-    if response.status_code != 200:
-        raise Exception(f"Authentication failed: {response.text}")
+        response = requests.post('https://api.schwabapi.com/v1/oauth/token', headers=headers, data=data)
+        if response.status_code != 200:
+            raise Exception(f"Authentication failed: {response.text}")
 
-    token_data = response.json()
-    # Convert expires_in to an integer before using it
-    expires_in = int(token_data.get('expires_in', 3600))  # Default to 1 hour if not present
-    token_data['expires_at'] = (datetime.now() + timedelta(seconds=expires_in)).isoformat()
+        token_data = response.json()
+        # Convert expires_in to an integer before using it
+        expires_in = int(token_data.get('expires_in', 3600))  # Default to 1 hour if not present
+        token_data['expires_at'] = (datetime.now() + timedelta(seconds=expires_in)).isoformat()
 
-    # Save token data
-    with open(token_file, 'w') as f:
-        json.dump(token_data, f)
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(token_file), exist_ok=True)
+        
+        # Save token data
+        with open(token_file, 'w') as f:
+            json.dump(token_data, f)
 
-    return token_data['access_token']
-
-  
+        return token_data['access_token']
+        
+    except Exception as e:
+        print(f"Authentication error: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
+        raise
 
 def get_stock_price_history(symbol, access_token, period_type, period, frequency_type, frequency, start_date, end_date, need_extended_hours_data, need_previous_close):
     url = 'https://api.schwabapi.com/marketdata/v1/pricehistory'
@@ -130,20 +144,29 @@ def get_stock_price_history(symbol, access_token, period_type, period, frequency
     ############################FUNCTIONS FOR PLACING ORDERS AND MONITORING ACCOUNT#############################
 
 def get_account_balance():
-
-    # Initialize client
-    client = schwabdev.Client(
-        os.getenv('appKey'),
-        os.getenv('appSecret'),
-        os.getenv('callback_url'),
-        tokens_file="tokens.json", 
-        timeout=10, 
-        update_tokens_auto=True
-    )
-
     try:
-        accounts_data = client.account_details_all().json()
+        # Initialize client with error handling
+        #This is a a part of the schwabdev library
+        client = schwabdev.Client(
+            os.getenv('appKey'),
+            os.getenv('appSecret'),
+            os.getenv('callback_url'),
+            tokens_file="auth/tokens.json", 
+            timeout=10, 
+            update_tokens_auto=True
+        )
         
+        # Add error handling for the API call
+        response = client.account_details_all()
+        if not response.ok:
+            print(f"API Error: {response.status_code} - {response.text}")
+            return 0
+            
+        accounts_data = response.json()
+        if not accounts_data:  # Check if data is empty
+            print("No account data received")
+            return 0
+            
         for account in accounts_data:
             securities_account = account.get('securitiesAccount', {})
             initial_balances = securities_account.get('initialBalances', {})
@@ -151,14 +174,18 @@ def get_account_balance():
             
     except Exception as e:
         print(f"Error fetching account information: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
         return 0
     
 def get_cash_balance():
-    # Initialize client
+    # Initialize client with error handling
     client = schwabdev.Client(
         os.getenv('appKey'),
         os.getenv('appSecret'),
-        os.getenv('callback_url')
+        os.getenv('callback_url'),
+        tokens_file="auth/tokens.json", 
+        timeout=10, 
+        update_tokens_auto=True
     )
     
     try:
