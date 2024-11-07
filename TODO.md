@@ -1,17 +1,12 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    - Make screener it's own function
-    - Learn about access tokens and how to auto authenticate either with my function or with the schwabdev api
-    - I think the config file is trying to authenticate in the get_account_balance function and it fails, but auto_authenticate is working so the screener is working.
-    - Build streamer/orchestrator:
-        use this prompt:
+    - check if buy can happen pre-market
+    - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
+    - May need to set based on purchase price and not target entry - refer to backtest.
+    - update to not use a manually set market open and close time. Use the API to get the market open and close time.
+    
 
-I'd like to turn this into a function that takes in multiple inputs and acts as an orchestrator. I want it to take as input a Ticker, a Target Entry Price, a Buy Time Threshold, a Stop Loss Price, a Profit Take Price, a Sell Time Threshold. 
-
-I want it to run the existing stream for that 'Ticker' and if the price goes above the Target Entry Price, before the Buy Time Threshold i would like to print('SHORT STOCK FUNCTION INITIATED, bought [quantity] shares of [ticker] for a total price of [quantity*ticker price]'). THEN if that message was triggered, i want it to continue streaming until the stop loss price, or the profit take price, or the sell time threshold is hit. I only want to short the stock once, and will always sell the stock by the sell time no matter what.
-
-    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
-    - for every output of the stream, we must create a condition checker to tell it if it should buy/sell
-    - If ticker crosses buy price, use short_stock_function
+    
+   Work on Order functions and integrate:
     - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
         - Make sure to check if the stock is eligible to be shorted
         - Make sure to check stock has not already been shorted
@@ -21,29 +16,34 @@ I want it to run the existing stream for that 'Ticker' and if the price goes abo
         - Sell at stop
         - Sell at take
         - Sell at time threshold
-    - Tie all these pieces together
-    - Increase number of orders per minute
-    - Make sure we're auto authenticating
-        - Can i consolidate the tokens into one file?
+    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
     - Make sure we aren't spending cash that we don't have
     - Make all functions async
+    - Tie all these pieces together with scheduler
     - Test as print statements before making trade calls to Schwab API
-
-- Add trade history log
-- Add better error handling
-
-- BUILD THEM AS AN AUTOMATED STRATEGY
+    - Add trade history log (Ensure it matches with backtest)
+    - Test with very small amounts first. Ensure failsafes so i don't lose all my money while testing.
 
 
 - OTHER TO-DO's
-    - Seperate functions and input variables into different files
-        - config.py (for config variables)
-        - functions.py (for functions)
+    
+    - Add better error handling
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz
     - See if there's a way we can filter out stocks hard to borrow or have high interest rates (based on float and market cap?)
     - Maybe i can keep my own DB of historical data for stocks and use that to run my screener?
         - Then the screener would just need to pull data from today and append to my DB
         - It would make the screener faster
+        - Learn about access tokens and how to auto authenticate either with my function or with the schwabdev api
+    - Make sure we're auto authenticating
+        - Can i consolidate the tokens into one file? 
+    
+
+
+ORCHESTRATOR DESIGN PLAN:
+
+I'd like to turn this into a function that takes in multiple inputs and acts as an orchestrator. I want it to take as input a Ticker, a Target Entry Price, a Buy Time Threshold, a Stop Loss Price, a Profit Take Price, a Sell Time Threshold. 
+
+I want it to run the existing stream for that 'Ticker' and if the price goes above the Target Entry Price, before the Buy Time Threshold i would like to print('SHORT STOCK FUNCTION INITIATED, bought [quantity] shares of [ticker] for a total price of [quantity*ticker price]'). THEN if that message was triggered, i want it to continue streaming until the stop loss price, or the profit take price, or the sell time threshold is hit. I only want to short the stock once, and will always sell the stock by the sell time no matter what.
     
 
 

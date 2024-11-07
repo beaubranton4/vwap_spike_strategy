@@ -25,7 +25,7 @@ def run_vwap_spike_screener(ticker_list, combinations, day_of_backtest,
                            period_type, period, frequency_type, frequency,
                            start_time, end_time, need_extended_hours_data, 
                            need_previous_close, rolling_lookback, ALLOCATION,
-                           price_spike_thresh_index, time_sig_thresh_index,
+                           price_spike_thresh_index, time_sig_thresh_index, buy_time_threshold_index,
                            vol_spike_thresh_index, sell_time_threshold_index,
                            stop_index, target_index):
     """
@@ -47,6 +47,7 @@ def run_vwap_spike_screener(ticker_list, combinations, day_of_backtest,
         ALLOCATION (float): Account allocation per trade
         price_spike_thresh_index (int): Index for price spike threshold in strategy
         time_sig_thresh_index (int): Index for time signal threshold in strategy
+        buy_time_threshold_index (int): Index for buy time threshold in strategy
         vol_spike_thresh_index (int): Index for volume spike threshold in strategy
         sell_time_threshold_index (int): Index for sell time threshold in strategy
         stop_index (int): Index for stop loss in strategy
@@ -222,6 +223,7 @@ def run_vwap_spike_screener(ticker_list, combinations, day_of_backtest,
                     stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                     stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
                     stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
+                    stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
                     stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]
                     
                     stop_price = TARGET_ENTRY_PRICE + (TARGET_ENTRY_PRICE * strategy[stop_index])
