@@ -1,12 +1,19 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    - check if buy can happen pre-market
+    - Make sure we allow shorting of stocks WHENEVER the buy time threshold is less than the sell time threshold.
+    check if buy can happen pre-market
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
     - May need to set based on purchase price and not target entry - refer to backtest.
     - update to not use a manually set market open and close time. Use the API to get the market open and close time.
+    Have to fix auto authentication
     
 
-    
-   Work on Order functions and integrate:
+    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
+    - Make sure we aren't spending cash that we don't have
+    - Make all functions async
+    - Tie all these pieces together with scheduler
+    - Test as print statements before making trade calls to Schwab API
+    - Add trade history log (Ensure it matches with backtest)
+    Work on Order functions and integrate:
     - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
         - Make sure to check if the stock is eligible to be shorted
         - Make sure to check stock has not already been shorted
@@ -16,13 +23,8 @@
         - Sell at stop
         - Sell at take
         - Sell at time threshold
-    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
-    - Make sure we aren't spending cash that we don't have
-    - Make all functions async
-    - Tie all these pieces together with scheduler
-    - Test as print statements before making trade calls to Schwab API
-    - Add trade history log (Ensure it matches with backtest)
     - Test with very small amounts first. Ensure failsafes so i don't lose all my money while testing.
+    - How do we ensure this strategy runs every day without touching it?
 
 
 - OTHER TO-DO's
