@@ -1,6 +1,6 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    - Make sure we allow shorting of stocks WHENEVER the buy time threshold is less than the sell time threshold.
-    check if buy can happen pre-market
+    - Update streamer to keep track of pre-market high to use to check if pre-market high surpasses yesterday's high in execute strategy
+    - Must code yesterday_high>= premarket high in execute strategy
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
     - May need to set based on purchase price and not target entry - refer to backtest.
     - update to not use a manually set market open and close time. Use the API to get the market open and close time.

@@ -222,6 +222,7 @@ def run_vwap_spike_screener(ticker_list, combinations, day_of_backtest,
                     stocks_to_trade.at[RESULT_INDEXER,'Signal Time'] = TEMP_SIGNAL_TIME
                     stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                     stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
+                    stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = YESTERDAY_HIGH
                     stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                     stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
                     stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]
