@@ -13,7 +13,7 @@ from .schwab_functions import (
     auto_authenticate,
     get_stock_price_history,
     get_account_balance,
-    get_cash_balance
+    get_cash_balance 
 )
 
 from .screener_functions import (

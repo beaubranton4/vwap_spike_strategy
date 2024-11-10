@@ -1,4 +1,7 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
+    - Get the mock streamer working (should i even use it?)
+        - remove self.streamer.stop
+        - there's no last price in the mock streamer
     - Update streamer to keep track of pre-market high to use to check if pre-market high surpasses yesterday's high in execute strategy
     - Must code yesterday_high>= premarket high in execute strategy
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
@@ -38,6 +41,9 @@
         - Learn about access tokens and how to auto authenticate either with my function or with the schwabdev api
     - Make sure we're auto authenticating
         - Can i consolidate the tokens into one file? 
+    - Document that we are currently using both in-house Schwab API functions and the schwabdev library.
+        - auto_authenticate and get_price_history are using the in-house functions
+        - everything else is using the schwabdev library
     
 
 

@@ -5,6 +5,7 @@ import requests
 from datetime import datetime, timedelta
 import schwabdev
 import traceback
+import pytz
 
 ######################################### SCHWAB API FUNCTIONS ########################################################
 
@@ -145,25 +146,25 @@ def get_stock_price_history(symbol, access_token, period_type, period, frequency
 
 def get_account_balance():
     try:
-        # Initialize client with error handling
-        #This is a a part of the schwabdev library
+        
+        # Initialize client with direct token data
         client = schwabdev.Client(
             os.getenv('appKey'),
             os.getenv('appSecret'),
             os.getenv('callback_url'),
-            tokens_file="auth/tokens.json", 
+            tokens_file="auth/schwab_dev_tokens.json",  # Pass token data directly
             timeout=10, 
             update_tokens_auto=True
         )
         
-        # Add error handling for the API call
+        # Rest of the function remains the same
         response = client.account_details_all()
         if not response.ok:
             print(f"API Error: {response.status_code} - {response.text}")
             return 0
             
         accounts_data = response.json()
-        if not accounts_data:  # Check if data is empty
+        if not accounts_data:
             print("No account data received")
             return 0
             
@@ -176,19 +177,22 @@ def get_account_balance():
         print(f"Error fetching account information: {str(e)}")
         print(f"Full traceback: {traceback.format_exc()}")
         return 0
-    
+
 def get_cash_balance():
-    # Initialize client with error handling
-    client = schwabdev.Client(
-        os.getenv('appKey'),
-        os.getenv('appSecret'),
-        os.getenv('callback_url'),
-        tokens_file="auth/tokens.json", 
-        timeout=10, 
-        update_tokens_auto=True
-    )
-    
     try:
+        # Format tokens first
+        formatted_tokens = format_tokens_for_client()
+        
+        # Initialize client with formatted tokens
+        client = schwabdev.Client(
+            os.getenv('appKey'),
+            os.getenv('appSecret'),
+            os.getenv('callback_url'),
+            tokens_file="auth/schwab_dev_tokens.json",  # Use formatted tokens instead of tokens_file
+            timeout=10, 
+            update_tokens_auto=True
+        )
+        
         accounts_data = client.account_details_all().json()
         
         for account in accounts_data:     

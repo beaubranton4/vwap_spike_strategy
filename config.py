@@ -23,7 +23,7 @@ run = strategy_note
 day_of_backtest = datetime.now()
 
 ########################################  IMPORT LIST OF ALL TICKERS FOR BACKTEST/STRATEGY   #################################
-ticker_list = pd.concat(map(pd.read_excel, glob.glob("../data/by_float/*.xlsx")))
+ticker_list = pd.concat(map(pd.read_excel, glob.glob("data/by_float/*.xlsx")))
 
 float_threshold = 50000000
 ticker_list = ticker_list[ticker_list['Float'] > float_threshold]
