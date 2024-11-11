@@ -6,6 +6,11 @@ from datetime import datetime, timedelta
 import schwabdev
 import traceback
 import pytz
+from schwabdev import Client
+from typing import Dict
+import logging
+
+logger = logging.getLogger(__name__)
 
 ######################################### SCHWAB API FUNCTIONS ########################################################
 
@@ -203,3 +208,51 @@ def get_cash_balance():
             
     except Exception as e:
         print(f"Error fetching account information: {str(e)}")
+
+def place_short_order(client: Client, symbol: str, quantity: int, price: float) -> Dict:
+    """Place a short sell order"""
+    try:
+        # Get account hash
+        linked_accounts_response = client.account_linked()
+        if linked_accounts_response.status_code != 200:
+            logger.error(f"Failed to get account information for {symbol}")
+            return {'status': 'ERROR'}
+            
+        account_hash = linked_accounts_response.json()[0].get('hashValue')
+        
+        # Create the order
+        order = {
+            "orderType": "LIMIT",
+            "price": str(price),
+            "session": "NORMAL",
+            "duration": "DAY",
+            "orderStrategyType": "SINGLE",
+            "orderLegCollection": [
+                {
+                    "instruction": "SELL_SHORT",
+                    "quantity": int(quantity),
+                    "instrument": {
+                        "symbol": symbol.upper(),
+                        "assetType": "EQUITY"
+                    }
+                }
+            ]
+        }
+        
+        # Place the order
+        order_response = client.order_place(account_hash, order)
+        
+        if order_response.status_code in [200, 201]:
+            order_id = order_response.headers.get('Location', '')
+            logger.info(f"✅ Successfully placed short order: {quantity} {symbol} @ ${price:.2f}")
+            return {
+                'status': 'SUCCESS',
+                'order_id': order_id
+            }
+        else:
+            logger.error(f"❌ Failed to place order for {symbol}: {order_response.text}")
+            return {'status': 'ERROR'}
+            
+    except Exception as e:
+        logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
+        return {'status': 'ERROR'}

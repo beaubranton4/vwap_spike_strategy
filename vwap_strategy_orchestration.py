@@ -7,12 +7,12 @@ from functions.execute_strategy import ExecuteStrategy
 from functions.manage_authentication import get_authenticated_client
 
 def main():
-    # Get authenticated client
+    # Get authenticated client / refresh schwabdev tokens
     client = get_authenticated_client()
     
     # Use client for your trading operations
-    # account_balance = get_account_balance()
-    # print(f"Account balance: {account_balance}")
+    account_balance = get_account_balance()
+    print(f"Account balance: {account_balance}")
 
     # May need to seperate screener and executor (will run at different times)
     # screener_results = run_vwap_spike_screener(
@@ -39,7 +39,7 @@ def main():
     # )
     # print(f"Found {len(screener_results)} potential trades")
     # Allow for custom date selection
-    selected_date = '2024-11-08'  # Can be modified to any date in YYYY-MM-DD format
+    selected_date = '2024-11-10'  # Can be modified to any date in YYYY-MM-DD format
     # Test an already established screener file
     # tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     # today = datetime.now().strftime('%Y-%m-%d')
@@ -47,7 +47,7 @@ def main():
     print(screener_results.head())
     
     # DOUBLE CHECK STRATEGY TO SEE IF WE CAN BUY PRE-MARKET
-    strategy = ExecuteStrategy(use_mock_data=True)
+    strategy = ExecuteStrategy(use_mock_data=False)
     strategy.execute_vwap_spike_strategy(screener_results)
 
     ##NEED TO FIX THE MARKETDATASTREAMER FROM EXECUTE STRATEGY FILE

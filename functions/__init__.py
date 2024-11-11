@@ -13,7 +13,8 @@ from .schwab_functions import (
     auto_authenticate,
     get_stock_price_history,
     get_account_balance,
-    get_cash_balance 
+    get_cash_balance,
+    place_short_order
 )
 
 from .screener_functions import (
@@ -35,5 +36,6 @@ __all__ = [
     'get_account_balance',
     'get_cash_balance',
     'run_vwap_spike_screener',
-    'ExecuteStrategy'
+    'ExecuteStrategy',
+    'place_short_order'
 ]

@@ -14,6 +14,7 @@ from config import *
 import pandas as pd
 from functions.mock_market_data import MockMarketDataStreamer
 import random
+import traceback
 # Use the format_tokens_for_client function from schwab_functions
 
 
@@ -48,6 +49,7 @@ class ExecuteStrategy:
         self.active_short_positions = set()
         self.closed_positions = set()
         self.last_known_prices = {}
+        self.symbols_to_remove = set()
         
         # Set up timezone
         self.et_timezone = pytz.timezone('US/Eastern')
@@ -77,13 +79,13 @@ class ExecuteStrategy:
         self.premarket_highs = {}
         
         # Add DataFrame to track all events
-        self.trading_events = pd.DataFrame(columns=[
-            'timestamp',
-            'symbol',
-            'price',
-            'event_type',  # 'REMOVED_PREMARKET', 'NO_SIGNAL', 'SHORT_SIGNAL', 'COVER_SHORT'
-            'details'
-        ])
+        self.trading_events = pd.DataFrame({
+            'timestamp': pd.Series(dtype='str'),
+            'symbol': pd.Series(dtype='str'),
+            'price': pd.Series(dtype='float64'),
+            'event_type': pd.Series(dtype='str'),
+            'details': pd.Series(dtype='str')
+        })
         
         # Add DataFrame to track all price data
         self.price_history = pd.DataFrame(columns=[
@@ -92,6 +94,9 @@ class ExecuteStrategy:
             'price',
             'simulated_time'
         ])
+
+        # Add last_position_print_time to track when we last printed positions
+        self.last_position_print_time = datetime.now(self.et_timezone)
 
     def _setup_authentication(self):
         """Set up authentication tokens for Schwab API"""
@@ -134,7 +139,7 @@ class ExecuteStrategy:
             raise
 
     def _get_strategy_end_time(self) -> datetime:
-        """Calculate strategy end time based on market close and configured threshold"""
+        """Calculate strategy end time based on market close and configured threshold - take earlier of strategy end and market close"""
         try:
             # Get NYSE schedule
             nyse = mcal.get_calendar('NYSE')
@@ -153,6 +158,9 @@ class ExecuteStrategy:
             # Get market close time
             market_close = schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
+            # Get the time from the SELL_TIME_THRESHOLD list
+            sell_time = SELL_TIME_THRESHOLD[0]  # Get first (and presumably only) time object from list
+                
             # Get strategy cutoff time using appropriate time source
             if self.use_mock_data and hasattr(self, 'streamer'):
                 now = self.streamer.get_current_time()
@@ -160,8 +168,8 @@ class ExecuteStrategy:
                 now = datetime.now(self.et_timezone)
                 
             strategy_cutoff = now.replace(
-                hour=SELL_TIME_THRESHOLD.hour,
-                minute=SELL_TIME_THRESHOLD.minute,
+                hour=sell_time.hour,
+                minute=sell_time.minute,
                 second=0,
                 microsecond=0
             )
@@ -261,6 +269,15 @@ class ExecuteStrategy:
                         else:
                             current_time = datetime.now(self.et_timezone)
                         
+                        # Print positions once per minute
+                        if (current_time - self.last_position_print_time).total_seconds() >= 60:
+                            logger.info("\n" + "="*50)
+                            logger.info(f"Position Update - {current_time.strftime('%H:%M:%S')} ET")
+                            logger.info(f"Active Positions: {self.active_short_positions}")
+                            logger.info(f"Closed Positions: {self.closed_positions}")
+                            logger.info("="*50 + "\n")
+                            self.last_position_print_time = current_time
+                        
                         # Process each symbol's data
                         for content in contents:
                             if content.get('key') and content.get('1'):
@@ -283,12 +300,7 @@ class ExecuteStrategy:
                                 # Check if symbol is eligible for trading
                                 if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
                                     symbol_data = self.df.loc[self.df['Ticker'] == symbol].iloc[0]
-                                    
-                                    # Debug logging
-                                    logger.info(f"{simulated_time} | {symbol} at ${price:.2f}")
-                                    logger.info(f"Target Entry: ${symbol_data['Target Entry']:.2f}")
-                                    logger.info(f"Active Positions: {self.active_short_positions}")
-                                    logger.info(f"Closed Positions: {self.closed_positions}")
+                                
                                     
                                     # Check if we're in market hours
                                     market_hours = (self.market_open_time.time() <= current_time.time() <= 
@@ -367,27 +379,64 @@ class ExecuteStrategy:
     def _check_entry_conditions(self, symbol: str, price: float, symbol_data: pd.Series,
                               current_time: datetime) -> None:
         """Check if new short position should be opened"""
-        if (price > symbol_data['Target Entry'] and 
-            symbol not in self.active_short_positions and 
-            symbol not in self.closed_positions):
-            
-            logger.info(f"\n{'='*50}")
-            logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                  f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
-            logger.info(f"{'='*50}\n")
-            
-            # Add to active positions
-            self.active_short_positions.add(symbol)
-            
-            # Track the signal
-            new_event = pd.DataFrame([{
-                'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'symbol': symbol,
-                'price': price,
-                'event_type': 'SHORT_SIGNAL',
-                'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
-            }])
-            self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+        try:
+            if symbol in self.active_short_positions:
+                logger.info(f"\n{'='*50}")
+                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                    f"${price:.2f} | NO SIGNAL - Stock is already Shorted")
+                logger.info(f"{'='*50}\n")
+                return
+                
+            if price < symbol_data['Target Entry']:
+                logger.info(f"\n{'='*50}")
+                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                    f"${price:.2f} | NO SIGNAL - Price did not hit target")
+                logger.info(f"{'='*50}\n")
+                return
+
+            if (price > symbol_data['Target Entry'] and 
+                symbol not in self.active_short_positions and 
+                symbol not in self.closed_positions):
+                
+                logger.info(f"\n{'='*50}")
+                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                          f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
+                
+                # Place the short order
+                limit_price = max(symbol_data['Target Entry'], price)
+                quantity = 1
+                
+                try:
+                    order_result = place_short_order(self.client, symbol, quantity, limit_price)
+                    
+                    # Only add to active positions if order was successful
+                    if order_result.get('status') == 'SUCCESS':
+                        logger.info(f"✅ Order successfully placed and confirmed")
+                        self.active_short_positions.add(symbol)
+                        
+                        # Track the signal
+                        new_event = pd.DataFrame([{
+                            'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                            'symbol': symbol,
+                            'price': price,
+                            'event_type': 'SHORT_SIGNAL',
+                            'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
+                        }])
+                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                    else:
+                        logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Error during order placement: {str(e)}")
+                    
+                logger.info(f"{'='*50}\n")
+                
+                # Important: Keep the stream alive by not blocking
+                sleep(0.1)  # Small delay to prevent overwhelming the system
+                   
+        except Exception as e:
+            logger.error(f"Error in entry conditions for {symbol}: {e}")
+            logger.error(f"Full traceback: {traceback.format_exc()}")
 
     def print_status_update(self) -> None:
         """Print periodic performance statistics"""
@@ -442,63 +491,49 @@ class ExecuteStrategy:
         """Main method to execute the VWAP spike trading strategy"""
         try:
             self.df = df
-            self.setup_signal_handlers()
             
-            symbols = df['Ticker'].unique().tolist()
+            # Print initial stock list in a clean format
+            logger.info("\n" + "="*50)
+            logger.info("Starting Strategy with Stocks:")
+            for _, row in df.iterrows():
+                logger.info(f"{row['Ticker']:<6} | Target Entry: ${row['Target Entry']:.2f}")
+            logger.info("="*50 + "\n")
             
-            # Initialize real or mock streamer
+            # First track pre-market highs and filter stocks
+            logger.info("Starting pre-market tracking phase...")
+            filtered_df = self.track_premarket_highs(df)
+            
+            # Update streamer with filtered symbols
+            symbols = filtered_df['Ticker'].unique().tolist()
+            
             if self.use_mock_data:
-                # Set up simulated start time at midnight ET today
-                today = datetime.now(self.et_timezone).date()
-                start_time = datetime.combine(today, datetime.strptime("00:00", "%H:%M").time())
-                start_time = self.et_timezone.localize(start_time)
-                
-                # Generate base prices slightly below Target Entry
+                # Generate base prices for mock data
                 base_prices = {}
                 for symbol in symbols:
-                    target_entry = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
+                    target_entry = filtered_df.loc[filtered_df['Ticker'] == symbol, 'Target Entry'].iloc[0]
                     discount = random.uniform(0.001, 0.02)  # 0.1% to 2% discount
                     base_prices[symbol] = target_entry * (1 - discount)
                 
-                self.streamer = MockMarketDataStreamer(
-                    symbols=symbols,
-                    base_prices=base_prices,
-                    start_time=start_time,
-                    time_multiplier=60  # Run 60x faster than real-time
-                )
-                logger.info("Using mock market data streamer")
-                logger.info(f"Generated initial prices for {len(base_prices)} symbols")
-                for symbol, price in base_prices.items():
-                    target = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
-                    logger.info(f"{symbol}: Starting at ${price:.2f} (Target Entry: ${target:.2f})")
+                # Update mock streamer configuration
+                self.streamer.symbols = symbols
+                self.streamer.base_prices = base_prices
             
-            if not self.streamer:
-                raise ValueError("Streamer not properly initialized")
-                
-            start_time = self.get_current_time()
-            logger.info(f"Strategy starting at {start_time.strftime('%H:%M:%S')} ET")
-            logger.info(f"Running until {self.strategy_end_time.strftime('%H:%M:%S')} ET")
-            
-            # Track pre-market data if using mock streamer
-            if self.use_mock_data:
-                self.track_premarket_highs(df)
+            # Start the main trading stream
+            logger.info("\n" + "="*50)
+            logger.info("Starting main trading stream...")
+            logger.info(f"Tracking {len(symbols)} symbols")
+            logger.info(f"Market open: {self.market_open_time.strftime('%H:%M:%S')} ET")
+            logger.info(f"Strategy end: {self.strategy_end_time.strftime('%H:%M:%S')} ET")
+            logger.info("="*50 + "\n")
             
             self.streamer.start(self.handle_stream_message)
-            
-            # Subscribe to market data
             self.streamer.send(self.streamer.level_one_equities(
                 ",".join(symbols), 
                 ExecuteStrategyConfig.L1_FIELDS
             ))
-
+            
             self.is_running = True
-            self.stream_start_time = datetime.now()
-
-            # Main processing loop
-            while self.is_running and self.is_strategy_active():
-                self.check_end_of_day_positions()
-                
-                # Generate mock data if using mock streamer
+            while self.is_running and self.get_current_time() < self.strategy_end_time:
                 if self.use_mock_data:
                     mock_message = self.streamer.generate_mock_message()
                     self.handle_stream_message(mock_message)
@@ -506,19 +541,21 @@ class ExecuteStrategy:
                 while self.message_buffer:
                     try:
                         message = json.loads(self.message_buffer.pop(0))
-                        self.message_count += 1
                         self.process_message(message)
                     except Exception as e:
-                        logger.error(f"Message processing error: {e}")
+                        logger.error(f"Error processing message: {e}")
+                
+                # Check for end of day positions
+                self.check_end_of_day_positions()
                 
                 sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
-
+                
         except Exception as e:
-            logger.error(f"Strategy execution error: {e}")
+            logger.error(f"Error in strategy execution: {e}")
+            raise
+            
         finally:
-            self.check_end_of_day_positions()
-            end_time = datetime.now(self.et_timezone)
-            logger.info(f"\nStrategy completed at {end_time.strftime('%H:%M:%S')} ET")
+            # Export trading events and price history
             if hasattr(self, 'trading_events') and not self.trading_events.empty:
                 # Export trading events
                 if not os.path.exists('mock_stream'):

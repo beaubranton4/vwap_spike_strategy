@@ -1,13 +1,11 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    - Get the mock streamer working (should i even use it?)
-        - remove self.streamer.stop
-        - there's no last price in the mock streamer
-    - Update streamer to keep track of pre-market high to use to check if pre-market high surpasses yesterday's high in execute strategy
-    - Must code yesterday_high>= premarket high in execute strategy
+    
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
     - May need to set based on purchase price and not target entry - refer to backtest.
+        - Also must check stock was actually shorted before checking for stop loss and profit take. (can use active_short_positions but must verify against reality)
     - update to not use a manually set market open and close time. Use the API to get the market open and close time.
     Have to fix auto authentication: it broke when i ran screener and streamer back to back.
+    - Add back condition about buy time threshold 1030 am ET
     
 
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
