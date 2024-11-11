@@ -13,6 +13,7 @@ from functions import *
 from config import *
 import pandas as pd
 from functions.mock_market_data import MockMarketDataStreamer
+import random
 # Use the format_tokens_for_client function from schwab_functions
 
 
@@ -39,14 +40,6 @@ class ExecuteStrategy:
         self.use_mock_data = use_mock_data
         dotenv.load_dotenv()
         
-        if not use_mock_data:
-            self._setup_authentication()
-            self._initialize_client()
-            self.streamer = self.client.stream
-        else:
-            logger.info("Initializing with mock data streamer")
-            self.streamer = None  # Will be set in execute_vwap_spike_strategy
-        
         # Initialize tracking variables
         self.message_buffer: List[str] = []
         self.is_running = False
@@ -56,13 +49,50 @@ class ExecuteStrategy:
         self.closed_positions = set()
         self.last_known_prices = {}
         
-        # Set up timezone and market hours
+        # Set up timezone
         self.et_timezone = pytz.timezone('US/Eastern')
+        
+        # Initialize streamer first
+        if not use_mock_data:
+            self._setup_authentication()
+            self._initialize_client()
+            self.streamer = self.client.stream
+        else:
+            logger.info("Initializing with mock data streamer")
+            # Set up simulated start time at midnight ET today
+            today = datetime.now(self.et_timezone).date()
+            start_time = datetime.combine(today, datetime.strptime("00:00", "%H:%M").time())
+            start_time = self.et_timezone.localize(start_time)
+            
+            self.streamer = MockMarketDataStreamer(
+                symbols=[],  # Empty list for now, will be populated later
+                base_prices={},  # Empty dict for now, will be populated later
+                start_time=start_time,
+                time_multiplier=60
+            )
+        
+        # Now we can safely get market times
         self.market_open_time = self._get_market_open_time()
         self.strategy_end_time = self._get_strategy_end_time()
         self.premarket_highs = {}
-        self.simulated_time = None  # Add this line
         
+        # Add DataFrame to track all events
+        self.trading_events = pd.DataFrame(columns=[
+            'timestamp',
+            'symbol',
+            'price',
+            'event_type',  # 'REMOVED_PREMARKET', 'NO_SIGNAL', 'SHORT_SIGNAL', 'COVER_SHORT'
+            'details'
+        ])
+        
+        # Add DataFrame to track all price data
+        self.price_history = pd.DataFrame(columns=[
+            'timestamp',
+            'symbol',
+            'price',
+            'simulated_time'
+        ])
+
     def _setup_authentication(self):
         """Set up authentication tokens for Schwab API"""
         try:
@@ -108,7 +138,13 @@ class ExecuteStrategy:
         try:
             # Get NYSE schedule
             nyse = mcal.get_calendar('NYSE')
-            today = datetime.now().date()
+            
+            # Use simulated time if mock data is enabled
+            if self.use_mock_data and hasattr(self, 'streamer'):
+                today = self.streamer.get_current_time().date()
+            else:
+                today = datetime.now().date()
+                
             schedule = pd.DataFrame(nyse.schedule(start_date=today, end_date=today))
             
             if len(schedule) == 0:
@@ -117,8 +153,12 @@ class ExecuteStrategy:
             # Get market close time
             market_close = schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
-            # Get strategy cutoff time
-            now = datetime.now(self.et_timezone)
+            # Get strategy cutoff time using appropriate time source
+            if self.use_mock_data and hasattr(self, 'streamer'):
+                now = self.streamer.get_current_time()
+            else:
+                now = datetime.now(self.et_timezone)
+                
             strategy_cutoff = now.replace(
                 hour=SELL_TIME_THRESHOLD.hour,
                 minute=SELL_TIME_THRESHOLD.minute,
@@ -135,8 +175,11 @@ class ExecuteStrategy:
             
         except Exception as e:
             logger.error(f"Error getting strategy end time: {e}")
-            # Default to 3:30 PM ET
-            now = datetime.now(self.et_timezone)
+            # Default to 3:30 PM ET using appropriate time source
+            if self.use_mock_data and hasattr(self, 'streamer'):
+                now = self.streamer.get_current_time()
+            else:
+                now = datetime.now(self.et_timezone)
             default_close = now.replace(hour=15, minute=30, second=0, microsecond=0)
             logger.warning(f"Using default end time: {default_close.strftime('%H:%M:%S')} ET")
             return default_close
@@ -145,7 +188,13 @@ class ExecuteStrategy:
         """Get market open time from NYSE calendar"""
         try:
             nyse = mcal.get_calendar('NYSE')
-            today = datetime.now().date()
+            
+            # Use simulated time if mock data is enabled
+            if self.use_mock_data and hasattr(self, 'streamer'):
+                today = self.streamer.get_current_time().date()
+            else:
+                today = datetime.now().date()
+                
             schedule = pd.DataFrame(nyse.schedule(start_date=today, end_date=today))
             
             if len(schedule) == 0:
@@ -157,8 +206,11 @@ class ExecuteStrategy:
             
         except Exception as e:
             logger.error(f"Error getting market open time: {e}")
-            # Default to 9:30 AM ET
-            now = datetime.now(self.et_timezone)
+            # Default to 9:30 AM ET using appropriate time source
+            if self.use_mock_data and hasattr(self, 'streamer'):
+                now = self.streamer.get_current_time()
+            else:
+                now = datetime.now(self.et_timezone)
             default_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
             logger.warning(f"Using default open time: {default_open.strftime('%H:%M:%S')} ET")
             return default_open
@@ -170,8 +222,12 @@ class ExecuteStrategy:
         return datetime.now(self.et_timezone)
         
     def is_strategy_active(self) -> bool:
-        """Check if strategy should still be running"""
-        current_time = self.get_current_time()
+        """Check if strategy should still be active"""
+        if self.use_mock_data and hasattr(self, 'streamer'):
+            current_time = self.streamer.get_current_time()
+        else:
+            current_time = datetime.now(self.et_timezone)
+        
         return current_time < self.strategy_end_time
 
     def handle_stream_message(self, message: str) -> None:
@@ -190,18 +246,67 @@ class ExecuteStrategy:
         signal.signal(signal.SIGTERM, signal_handler)
 
     def process_message(self, message: Dict[str, Any]) -> None:
-        """Process messages from the market data stream"""
-        for msg_type, services in message.items():
-            if msg_type == "data":
-                self._handle_market_data(services)
-            elif msg_type == "response":
-                logger.info(f"Response received: {services}")
-            elif msg_type == "notify":
-                logger.debug(f"Heartbeat received: {services}")
-            else:
-                logger.warning(f"Unknown message type: {message}")
+        """Process market data messages during regular trading"""
+        try:
+            for rtype, services in message.items():
+                if rtype == "data":
+                    for service in services:
+                        contents = service.get("content", [])
+                        simulated_time = service.get("simulated_time", None)
+                        
+                        # Get current time based on mode
+                        if self.use_mock_data and simulated_time:
+                            current_time = datetime.strptime(simulated_time, '%Y-%m-%d %H:%M:%S')
+                            current_time = self.et_timezone.localize(current_time)
+                        else:
+                            current_time = datetime.now(self.et_timezone)
+                        
+                        # Process each symbol's data
+                        for content in contents:
+                            if content.get('key') and content.get('1'):
+                                symbol = content.get('key')
+                                price = float(content.get('1'))
+                                
+                                # Track price history for mock data
+                                if self.use_mock_data:
+                                    new_price = pd.DataFrame([{
+                                        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                        'symbol': symbol,
+                                        'price': price,
+                                        'simulated_time': simulated_time
+                                    }])
+                                    self.price_history = pd.concat([self.price_history, new_price], ignore_index=True)
+                                
+                                # Update last known price
+                                self.last_known_prices[symbol] = price
+                                
+                                # Check if symbol is eligible for trading
+                                if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
+                                    symbol_data = self.df.loc[self.df['Ticker'] == symbol].iloc[0]
+                                    
+                                    # Debug logging
+                                    logger.info(f"{simulated_time} | {symbol} at ${price:.2f}")
+                                    logger.info(f"Target Entry: ${symbol_data['Target Entry']:.2f}")
+                                    logger.info(f"Active Positions: {self.active_short_positions}")
+                                    logger.info(f"Closed Positions: {self.closed_positions}")
+                                    
+                                    # Check if we're in market hours
+                                    market_hours = (self.market_open_time.time() <= current_time.time() <= 
+                                                  self.strategy_end_time.time())
+                                    
+                                    if market_hours:
+                                        if symbol in self.active_short_positions:
+                                            # Check exit conditions for active positions
+                                            self._check_exit_conditions(symbol, price, symbol_data, current_time)
+                                        else:
+                                            # Check entry conditions for new positions
+                                            self._check_entry_conditions(symbol, price, symbol_data, current_time)
+                            
+        except Exception as e:
+            logger.error(f"Error processing message: {e}")
+            logger.error(f"Message content: {message}")
 
-    def _handle_market_data(self, services: List[Dict[str, Any]]) -> None:
+    def handle_market_data(self, services: List[Dict[str, Any]]) -> None:
         """Process market data messages and execute trading logic"""
         for service in services:
             contents = service.get("content", [])
@@ -235,40 +340,54 @@ class ExecuteStrategy:
     def _check_exit_conditions(self, symbol: str, price: float, symbol_data: pd.Series, 
                              current_time: datetime) -> None:
         """Check if position should be closed based on price targets"""
-        if price >= symbol_data['Stop Price'] or price <= symbol_data['Sell Price']:
-            print(f"\n{'='*50}")
-            if price >= symbol_data['Stop Price']:
-                print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                      f"${price:.4f} | 📉 Stop loss hit at ${symbol_data['Stop Price']:.4f}")
-            else:
-                print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                      f"${price:.4f} | 📈 Profit target at ${symbol_data['Sell Price']:.4f}")
-            print(f"{'='*50}\n")
-            
-            self.closed_positions.add(symbol)
-        else:
-            print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                  f"${price:.4f} | NO SIGNAL - Already short")
+        if symbol in self.active_short_positions and symbol not in self.closed_positions:
+            if price >= symbol_data['Stop Price'] or price <= symbol_data['Sell Price']:
+                logger.info(f"\n{'='*50}")
+                if price >= symbol_data['Stop Price']:
+                    logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                              f"${price:.2f} | 📉 Stop loss hit at ${symbol_data['Stop Price']:.2f}")
+                else:
+                    logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                              f"${price:.2f} | 📈 Profit target at ${symbol_data['Sell Price']:.2f}")
+                logger.info(f"{'='*50}\n")
+                
+                # Add to closed positions
+                self.closed_positions.add(symbol)
+                
+                # Track the exit
+                new_event = pd.DataFrame([{
+                    'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'symbol': symbol,
+                    'price': price,
+                    'event_type': 'COVER_SHORT',
+                    'details': f"{'Stop loss' if price >= symbol_data['Stop Price'] else 'Profit target'} hit"
+                }])
+                self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
 
     def _check_entry_conditions(self, symbol: str, price: float, symbol_data: pd.Series,
                               current_time: datetime) -> None:
         """Check if new short position should be opened"""
-        market_hours = (self.market_open_time.time() <= current_time.time() <= 
-                       self.strategy_end_time.time())
-        
         if (price > symbol_data['Target Entry'] and 
-            symbol not in self.closed_positions and
-            market_hours):
+            symbol not in self.active_short_positions and 
+            symbol not in self.closed_positions):
             
-            print(f"\n{'='*50}")
-            print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                  f"${price:.4f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.4f}")
-            print(f"{'='*50}\n")
+            logger.info(f"\n{'='*50}")
+            logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                  f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
+            logger.info(f"{'='*50}\n")
             
+            # Add to active positions
             self.active_short_positions.add(symbol)
-        else:
-            print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                  f"${price:.4f} | NO SIGNAL - Below ${symbol_data['Target Entry']:.4f}")
+            
+            # Track the signal
+            new_event = pd.DataFrame([{
+                'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'symbol': symbol,
+                'price': price,
+                'event_type': 'SHORT_SIGNAL',
+                'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
+            }])
+            self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
 
     def print_status_update(self) -> None:
         """Print periodic performance statistics"""
@@ -284,19 +403,40 @@ class ExecuteStrategy:
 
     def check_end_of_day_positions(self) -> None:
         """Close any remaining positions at strategy end time"""
-        current_time = datetime.now(self.et_timezone)
+        # Get current time based on mode
+        if self.use_mock_data and hasattr(self, 'streamer'):
+            current_time = self.streamer.get_current_time()
+        else:
+            current_time = datetime.now(self.et_timezone)
+        
         seconds_to_close = (self.strategy_end_time - current_time).total_seconds()
         
         if seconds_to_close <= 30:
-            for symbol in self.active_short_positions - self.closed_positions:
-                current_price = float(self.last_known_prices.get(symbol, 0))
+            remaining_positions = self.active_short_positions - self.closed_positions
+            if remaining_positions:
+                logger.info(f"\n{'='*50}")
+                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | END OF DAY CLOSING")
+                logger.info(f"Closing {len(remaining_positions)} positions")
                 
-                print(f"\n{'='*50}")
-                print(f"{current_time.strftime('%H:%M:%S.%f')[:-3]} ET | {symbol}: "
-                      f"${current_price:.4f} | ❓ COVERED SHORT (End of Day)")
-                print(f"{'='*50}\n")
+                for symbol in remaining_positions:
+                    current_price = float(self.last_known_prices.get(symbol, 0))
+                    
+                    logger.info(f"{symbol}: ${current_price:.2f} | ⏰ END OF DAY CLOSE")
+                    
+                    # Add to trading events
+                    new_event = pd.DataFrame([{
+                        'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'symbol': symbol,
+                        'price': current_price,
+                        'event_type': 'EOD_CLOSE',
+                        'details': f'End of day position close at ${current_price:.2f}'
+                    }])
+                    self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                    
+                    # Add to closed positions
+                    self.closed_positions.add(symbol)
                 
-                self.closed_positions.add(symbol)
+                logger.info(f"{'='*50}\n")
 
     def execute_vwap_spike_strategy(self, df: pd.DataFrame) -> None:
         """Main method to execute the VWAP spike trading strategy"""
@@ -313,10 +453,13 @@ class ExecuteStrategy:
                 start_time = datetime.combine(today, datetime.strptime("00:00", "%H:%M").time())
                 start_time = self.et_timezone.localize(start_time)
                 
-                base_prices = {
-                    row['Ticker']: row['Last Price'] 
-                    for _, row in df.iterrows()
-                }
+                # Generate base prices slightly below Target Entry
+                base_prices = {}
+                for symbol in symbols:
+                    target_entry = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
+                    discount = random.uniform(0.001, 0.02)  # 0.1% to 2% discount
+                    base_prices[symbol] = target_entry * (1 - discount)
+                
                 self.streamer = MockMarketDataStreamer(
                     symbols=symbols,
                     base_prices=base_prices,
@@ -324,7 +467,14 @@ class ExecuteStrategy:
                     time_multiplier=60  # Run 60x faster than real-time
                 )
                 logger.info("Using mock market data streamer")
+                logger.info(f"Generated initial prices for {len(base_prices)} symbols")
+                for symbol, price in base_prices.items():
+                    target = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
+                    logger.info(f"{symbol}: Starting at ${price:.2f} (Target Entry: ${target:.2f})")
             
+            if not self.streamer:
+                raise ValueError("Streamer not properly initialized")
+                
             start_time = self.get_current_time()
             logger.info(f"Strategy starting at {start_time.strftime('%H:%M:%S')} ET")
             logger.info(f"Running until {self.strategy_end_time.strftime('%H:%M:%S')} ET")
@@ -369,47 +519,93 @@ class ExecuteStrategy:
             self.check_end_of_day_positions()
             end_time = datetime.now(self.et_timezone)
             logger.info(f"\nStrategy completed at {end_time.strftime('%H:%M:%S')} ET")
-            self.streamer.stop()
+            if hasattr(self, 'trading_events') and not self.trading_events.empty:
+                # Export trading events
+                if not os.path.exists('mock_stream'):
+                    os.makedirs('mock_stream')
+                    
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                events_filename = f'mock_stream/trading_events_{timestamp}.xlsx'
+                prices_filename = f'mock_stream/details_{timestamp}.xlsx'
+                
+                # Export trading events
+                with pd.ExcelWriter(events_filename, engine='openpyxl') as writer:
+                    self.trading_events.to_excel(writer, sheet_name='All Events', index=False)
+                    summary = self.trading_events['event_type'].value_counts()
+                    summary.to_frame('Count').to_excel(writer, sheet_name='Event Summary')
+                    symbol_summary = self.trading_events.groupby(['symbol', 'event_type']).size().unstack(fill_value=0)
+                    symbol_summary.to_excel(writer, sheet_name='Symbol Summary')
+                
+                # Export price history
+                if hasattr(self, 'price_history') and not self.price_history.empty:
+                    with pd.ExcelWriter(prices_filename, engine='openpyxl') as writer:
+                        # All price data
+                        self.price_history.to_excel(writer, sheet_name='All Prices', index=False)
+                        
+                        # Price summary by symbol
+                        price_summary = self.price_history.groupby('symbol').agg({
+                            'price': ['min', 'max', 'mean', 'std']
+                        }).round(4)
+                        price_summary.columns = ['Min Price', 'Max Price', 'Avg Price', 'Std Dev']
+                        price_summary.to_excel(writer, sheet_name='Price Summary')
+                        
+                        # Price movement by time
+                        pivot_table = self.price_history.pivot_table(
+                            values='price',
+                            index='simulated_time',
+                            columns='symbol',
+                            aggfunc='first'
+                        )
+                        pivot_table.to_excel(writer, sheet_name='Price Timeline')
+                
+                logger.info(f"Trading events saved to {events_filename}")
+                logger.info(f"Price details saved to {prices_filename}")
+            
+            if hasattr(self, 'streamer') and self.streamer is not None:
+                self.streamer.stop()
 
 ######################### PRE-MARKET TRACKING ######################### 
 
     def track_premarket_highs(self, df: pd.DataFrame) -> pd.DataFrame:
         """Track pre-market highs and filter stocks before market open"""
         self.df = df.copy()
-        self.shared_list = []
+        self.message_buffer = []
         self.symbols_to_remove = set()
         
         logger.info("\n" + "="*50)
         logger.info("Starting pre-market tracking...")
         logger.info(f"Initial symbols: {len(self.df)}")
-        logger.info(f"Current time: {datetime.now(self.et_timezone).strftime('%H:%M:%S')} ET")
+        logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
         logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
         logger.info("="*50 + "\n")
         
         try:
-            self.streamer.start(self.response_handler)
+            self.streamer.start(self.handle_stream_message)
             symbols = self.df['Ticker'].unique().tolist()
             self.streamer.send(self.streamer.level_one_equities(
                 ",".join(symbols), 
                 ExecuteStrategyConfig.L1_FIELDS
             ))
             
-            self.running = True
+            self.is_running = True
             start_time = datetime.now()
             last_status_time = start_time
             
-            while self.running and datetime.now(self.et_timezone) < self.market_open_time:
-                while self.shared_list:
+            while self.is_running and self.get_current_time() < self.market_open_time:
+                if self.use_mock_data:
+                    mock_message = self.streamer.generate_mock_message()
+                    self.handle_stream_message(mock_message)
+                
+                while self.message_buffer:
                     try:
-                        message = json.loads(self.shared_list.pop(0))
+                        message = json.loads(self.message_buffer.pop(0))
                         self.process_premarket_message(message)
                     except Exception as e:
                         logger.error(f"Error processing pre-market message: {e}")
                 
-                # Print hourly status
-                current_time = datetime.now()
-                if (current_time - last_status_time).seconds >= 3600:  # 1 hour
-                    self.print_premarket_status()
+                current_time = self.get_current_time()
+                if (current_time - last_status_time.astimezone(self.et_timezone)).seconds >= 3600:  # 1 hour
+                    self.print_premarket_status(current_time)
                     last_status_time = current_time
                 
                 sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
@@ -431,47 +627,56 @@ class ExecuteStrategy:
 
     def process_premarket_message(self, message: Dict[str, Any]) -> None:
         """Process pre-market data messages"""
-        for rtype, services in message.items():
-            if rtype == "data":
-                for service in services:
-                    contents = service.get("content", [])
-                    for content in contents:
-                        if content.get('key') and content.get('1'):
-                            symbol = content.get('key')
-                            current_price = float(content.get('1'))
-                            
-                            if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
-                                # Update pre-market high
+        try:
+            for rtype, services in message.items():
+                if rtype == "data":
+                    for service in services:
+                        contents = service.get("content", [])
+                        simulated_time = service.get("simulated_time", "Unknown time")
+                        
+                        for content in contents:
+                            if content.get('key') and content.get('1'):
+                                symbol = content.get('key')
+                                current_price = float(content.get('1'))
+                                
+                                # Initialize premarket_highs for the symbol if not exists
                                 if symbol not in self.premarket_highs:
                                     self.premarket_highs[symbol] = current_price
-                                else:
-                                    self.premarket_highs[symbol] = max(
-                                        self.premarket_highs[symbol], 
-                                        current_price
-                                    )
                                 
-                                # Check against yesterday's high
-                                yesterday_high = self.df.loc[
-                                    self.df['Ticker'] == symbol, 
-                                    'Yesterday High'
-                                ].iloc[0]
-                                
-                                if self.premarket_highs[symbol] > yesterday_high:
-                                    eastern_time = datetime.now(self.et_timezone)
-                                    logger.info(f"\n{'='*50}")
-                                    logger.info(f"{eastern_time.strftime('%H:%M:%S')} ET | {symbol} removed from watchlist")
-                                    logger.info(f"Pre-market high: ${self.premarket_highs[symbol]:.2f}")
-                                    logger.info(f"Yesterday high: ${yesterday_high:.2f}")
-                                    logger.info(f"{'='*50}\n")
-                                    self.symbols_to_remove.add(symbol)
+                                if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
+                                    yesterday_high = self.df.loc[
+                                        self.df['Ticker'] == symbol, 
+                                        'Yesterday High'
+                                    ].iloc[0]
+                                    
+                                    # Update premarket high if current price is higher
+                                    if current_price > self.premarket_highs[symbol]:
+                                        self.premarket_highs[symbol] = current_price
+                                        logger.info(f"{simulated_time} | {symbol} New high: ${current_price:.2f} | Yesterday High: ${yesterday_high:.2f}")
+                                    
+                                    if self.premarket_highs[symbol] > yesterday_high:
+                                        # Track removal event
+                                        new_event = pd.DataFrame([{
+                                            'timestamp': simulated_time,
+                                            'symbol': symbol,
+                                            'price': current_price,
+                                            'event_type': 'REMOVED_PREMARKET',
+                                            'details': f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
+                                        }])
+                                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                                        self.symbols_to_remove.add(symbol)
+                                        logger.info(f"{simulated_time} | {symbol} REMOVED - Breached yesterday's high")
+        except Exception as e:
+            logger.error(f"Error processing pre-market message: {str(e)}")
+            logger.error(f"Message content: {message}")
 
-    def print_premarket_status(self) -> None:
-        """Print periodic pre-market status update"""
-        eastern_time = datetime.now(self.et_timezone)
-        hours_to_open = (self.market_open_time - eastern_time).seconds / 3600
+    def print_premarket_status(self, simulated_time: datetime) -> None:
+        """Print periodic pre-market status update using simulated time"""
+        # Calculate hours until market open using simulated time
+        hours_to_open = (self.market_open_time - simulated_time).total_seconds() / 3600
         
         logger.info("\n" + "="*50)
-        logger.info(f"Pre-market status - {eastern_time.strftime('%H:%M:%S')} ET")
+        logger.info(f"Pre-market status - {simulated_time.strftime('%H:%M:%S')} ET")
         logger.info(f"Hours until market open: {hours_to_open:.1f}")
         logger.info(f"Symbols being tracked: {len(self.df) - len(self.symbols_to_remove)}")
         logger.info(f"Symbols removed: {len(self.symbols_to_remove)}")

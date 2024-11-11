@@ -13,9 +13,12 @@
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
     - Make sure we aren't spending cash that we don't have
     - Make all functions async
-    - Tie all these pieces together with scheduler
+    - Tie all these pieces together with scheduler (Mage?)
+        - Schedule screener to run at 5 pm PT every day.
+        - Schedule streamer to run from 12 am PT to 4pm PT every day.
     - Test as print statements before making trade calls to Schwab API
-    - Add trade history log (Ensure it matches with backtest)
+    - Run on VM so it continuously runs
+    - Add trade history log with profit / loss etc. Join with the screener output (Ensure it matches with backtest)
     Work on Order functions and integrate:
     - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
         - Make sure to check if the stock is eligible to be shorted

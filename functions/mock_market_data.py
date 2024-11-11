@@ -34,7 +34,7 @@ class MockMarketDataStreamer:
             self.current_time = start_time
             
         self.time_multiplier = time_multiplier
-        self.time_increment = timedelta(minutes=15)  # 15-minute increments
+        self.time_increment = timedelta(minutes=30)  # 30-minute increments
         self.last_update = datetime.now()
         
         # Track session type for price volatility adjustment
@@ -69,28 +69,29 @@ class MockMarketDataStreamer:
             
         session = self.get_session_type(self.current_time)
         
-        # Adjust volatility based on session
+        # Increased volatility for more dramatic price movements
         volatility_multiplier = {
-            'pre_market': 0.003,    # 0.3% max movement
-            'market': 0.005,        # 0.5% max movement
-            'after_market': 0.002   # 0.2% max movement
+            'pre_market': 0.015,    # 1.5% max movement
+            'market': 0.025,        # 2.5% max movement
+            'after_market': 0.01    # 1.0% max movement
         }[session]
         
-        price_change = self.base_prices[symbol] * random.uniform(
-            -volatility_multiplier, 
-            volatility_multiplier
-        )
+        # Add directional bias for more trending movements
+        trend_bias = random.choice([-1, 1])  # Randomly choose upward or downward trend
+        base_movement = random.uniform(0.005, volatility_multiplier)  # Minimum 0.5% movement
+        price_change = self.base_prices[symbol] * (base_movement * trend_bias)
+        
+        # Occasionally generate larger moves (20% chance)
+        if random.random() < 0.2:
+            price_change *= random.uniform(2, 3)  # 2-3x larger movement
+        
         new_price = self.base_prices[symbol] + price_change
         self.base_prices[symbol] = new_price
         return round(new_price, 2)
         
     def update_simulated_time(self):
-        """Update the simulated time based on elapsed real time and multiplier"""
-        now = datetime.now()
-        elapsed_seconds = (now - self.last_update).total_seconds()
-        simulated_seconds = elapsed_seconds * self.time_multiplier
-        self.current_time += timedelta(seconds=simulated_seconds)
-        self.last_update = now
+        """Update the simulated time based on fixed 30-minute increments"""
+        self.current_time += self.time_increment
         return self.current_time
         
     def generate_mock_message(self) -> str:
@@ -99,15 +100,14 @@ class MockMarketDataStreamer:
         current_time = self.update_simulated_time()
         session = self.get_session_type(current_time)
         
-        symbol = random.choice(self.symbols)
-        price = self.generate_mock_price(symbol)
-        
-        # Adjust bid/ask spread based on session
-        spread_multiplier = {
-            'pre_market': 0.04,    # Wider spread
-            'market': 0.02,        # Normal spread
-            'after_market': 0.03   # Moderate spread
-        }[session]
+        # Create content list for all symbols
+        contents = []
+        for symbol in self.symbols:
+            price = self.generate_mock_price(symbol)
+            contents.append({
+                "key": symbol,
+                "1": str(price),  # Last price
+            })
         
         message = {
             "data": [{
@@ -115,12 +115,7 @@ class MockMarketDataStreamer:
                 "timestamp": current_time.timestamp(),
                 "simulated_time": current_time.strftime('%Y-%m-%d %H:%M:%S'),
                 "session": session,
-                "content": [{
-                    "key": symbol,
-                    "1": str(price),  # Last price
-                    "2": str(price - random.uniform(0, spread_multiplier)),  # Bid
-                    "3": str(price + random.uniform(0, spread_multiplier))   # Ask
-                }]
+                "content": contents  # Now includes all symbols
             }]
         }
         return json.dumps(message)
@@ -136,3 +131,15 @@ class MockMarketDataStreamer:
     def send(self, request: Dict):
         """Mock method to match real streamer interface"""
         logger.info(f"Mock subscription request: {request}")
+
+    def start(self, callback: Callable):
+        """Start the mock streamer"""
+        self.callback = callback
+        self.is_running = True
+        logger.info("Mock streamer started")
+
+    def stop(self):
+        """Stop the mock streamer"""
+        self.is_running = False
+        self.callback = None
+        logger.info("Mock streamer stopped")
