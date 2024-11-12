@@ -71,7 +71,7 @@ class MockMarketDataStreamer:
         
         # Increased volatility for more dramatic price movements
         volatility_multiplier = {
-            'pre_market': 0.015,    # 1.5% max movement
+            'pre_market': 0.05,    # 5% max movement
             'market': 0.025,        # 2.5% max movement
             'after_market': 0.01    # 1.0% max movement
         }[session]

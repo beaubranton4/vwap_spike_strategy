@@ -1,8 +1,11 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
     
+    - Add check to ensure there is enough cash to buy the stock.
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
     - May need to set stops and profit taking based on purchase price and not target entry - refer to backtest.
         - Also must check stock was actually shorted before checking for stop loss and profit take. (can use active_short_positions but must verify against reality)
+
+    - End of day closing should be market order.
     
 
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)

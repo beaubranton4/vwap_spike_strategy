@@ -46,7 +46,7 @@ class ExecuteStrategy:
         self.is_running = False
         self.message_count = 0
         self.stream_start_time: Optional[datetime] = None
-        self.active_short_positions = set()
+        self.active_short_positions = {}  # {symbol: entry_price}
         self.closed_positions = set()
         self.last_known_prices = {}
         self.symbols_to_remove = set()
@@ -353,14 +353,20 @@ class ExecuteStrategy:
                              current_time: datetime) -> None:
         """Check if position should be closed based on price targets"""
         if symbol in self.active_short_positions and symbol not in self.closed_positions:
-            if price >= symbol_data['Stop Price'] or price <= symbol_data['Sell Price']:
+            entry_price = self.active_short_positions[symbol]
+            
+            # Calculate stop and target prices based on entry price
+            stop_price = entry_price * (1 + STOP[0])  # Add percentage for stop loss (going up)
+            target_price = entry_price * (1 - TARGET[0])  # Subtract percentage for profit target (going down)
+            
+            if price >= stop_price or price <= target_price:
                 logger.info(f"\n{'='*50}")
-                if price >= symbol_data['Stop Price']:
+                if price >= stop_price:
                     logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                              f"${price:.2f} | 📉 Stop loss hit at ${symbol_data['Stop Price']:.2f}")
+                              f"${price:.2f} | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
                 else:
                     logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                              f"${price:.2f} | 📈 Profit target at ${symbol_data['Sell Price']:.2f}")
+                              f"${price:.2f} | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
                 logger.info(f"{'='*50}\n")
                 
                 # Add to closed positions
@@ -372,7 +378,8 @@ class ExecuteStrategy:
                     'symbol': symbol,
                     'price': price,
                     'event_type': 'COVER_SHORT',
-                    'details': f"{'Stop loss' if price >= symbol_data['Stop Price'] else 'Profit target'} hit"
+                    'details': f"{'Stop loss' if price >= stop_price else 'Profit target'} hit | " +
+                              f"Entry: ${entry_price:.2f} | Stop: ${stop_price:.2f} | Target: ${target_price:.2f}"
                 }])
                 self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
 
@@ -383,7 +390,7 @@ class ExecuteStrategy:
             if symbol in self.active_short_positions:
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                    f"${price:.2f} | NO SIGNAL - Stock is already Shorted")
+                    f"${price:.2f} | NO SIGNAL - Stock is already Shorted @ ${self.active_short_positions[symbol]:.2f}")
                 logger.info(f"{'='*50}\n")
                 return
                 
@@ -413,7 +420,7 @@ class ExecuteStrategy:
                         # Only add to active positions if order was successful
                         if order_result.get('status') == 'SUCCESS':
                             logger.info(f"✅ Order successfully placed and confirmed")
-                            self.active_short_positions.add(symbol)
+                            self.active_short_positions[symbol] = price  # Store entry price
                         else:
                             logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
                         
@@ -422,7 +429,8 @@ class ExecuteStrategy:
                 
                 else:
                     logger.info(f"✅ Mock data mode: Order would have been placed")
-                    self.active_short_positions.add(symbol)
+                    self.active_short_positions[symbol] = price  # Store entry price
+
                 # Track the signal regardless of mock/real mode
                 new_event = pd.DataFrame([{
                     'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
@@ -465,7 +473,7 @@ class ExecuteStrategy:
         seconds_to_close = (self.strategy_end_time - current_time).total_seconds()
         print(f"Seconds to close: {seconds_to_close}")
         if seconds_to_close <= 30:
-            remaining_positions = self.active_short_positions - self.closed_positions
+            remaining_positions = set(self.active_short_positions.keys()) - self.closed_positions
             if remaining_positions:
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | END OF DAY CLOSING")
@@ -473,8 +481,9 @@ class ExecuteStrategy:
                 
                 for symbol in remaining_positions:
                     current_price = float(self.last_known_prices.get(symbol, 0))
+                    entry_price = self.active_short_positions[symbol]
                     
-                    logger.info(f"{symbol}: ${current_price:.2f} | ⏰ END OF DAY CLOSE")
+                    logger.info(f"{symbol}: ${current_price:.2f} | Entry: ${entry_price:.2f} | ⏰ END OF DAY CLOSE")
                     
                     # Add to trading events
                     new_event = pd.DataFrame([{
@@ -502,6 +511,20 @@ class ExecuteStrategy:
             for _, row in df.iterrows():
                 logger.info(f"{row['Ticker']:<6} | Target Entry: ${row['Target Entry']:.2f}")
             logger.info("="*50 + "\n")
+
+            pre_market_symbols = df['Ticker'].unique().tolist()
+
+            if self.use_mock_data:
+                # Generate base prices for mock data
+                base_prices = {}
+                for symbol in pre_market_symbols:
+                    target_entry = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
+                    discount = random.uniform(0.001, 0.02)  # 0.1% to 2% discount
+                    base_prices[symbol] = target_entry * (1 - discount)
+                
+                # Update mock streamer configuration
+                self.streamer.symbols = pre_market_symbols
+                self.streamer.base_prices = base_prices
             
             # First track pre-market highs and filter stocks
             logger.info("Starting pre-market tracking phase...")
@@ -509,18 +532,6 @@ class ExecuteStrategy:
             
             # Update streamer with filtered symbols
             symbols = filtered_df['Ticker'].unique().tolist()
-            
-            if self.use_mock_data:
-                # Generate base prices for mock data
-                base_prices = {}
-                for symbol in symbols:
-                    target_entry = filtered_df.loc[filtered_df['Ticker'] == symbol, 'Target Entry'].iloc[0]
-                    discount = random.uniform(0.001, 0.02)  # 0.1% to 2% discount
-                    base_prices[symbol] = target_entry * (1 - discount)
-                
-                # Update mock streamer configuration
-                self.streamer.symbols = symbols
-                self.streamer.base_prices = base_prices
             
             # Start the main trading stream
             logger.info("\n" + "="*50)
