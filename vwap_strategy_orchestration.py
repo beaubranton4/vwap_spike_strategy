@@ -14,6 +14,8 @@ def main():
     # Rest of your code using the client
     account_balance = get_account_balance(client)
     print(f"Account balance: {account_balance}")
+    cash_balance = get_cash_balance(client)
+    print(f"Cash balance: {cash_balance}")
 
     # May need to seperate screener and executor (will run at different times)
     # screener_results = run_vwap_spike_screener(

@@ -221,28 +221,16 @@ def get_account_balance(client):
         print(f"Full traceback: {traceback.format_exc()}")
         return 0
 
-def get_cash_balance():
+def get_cash_balance(client):
     try:
-        # Format tokens first
-        formatted_tokens = format_tokens_for_client()
-        
-        # Initialize client with formatted tokens
-        client = schwabdev.Client(
-            os.getenv('appKey'),
-            os.getenv('appSecret'),
-            os.getenv('callback_url'),
-            tokens_file="auth/schwab_dev_tokens.json",  # Use formatted tokens instead of tokens_file
-            timeout=10, 
-            update_tokens_auto=True
-        )
         
         accounts_data = client.account_details_all().json()
         
         for account in accounts_data:     
             # Return only the Cash Balance as a number
-            cash_balance = current_balances.get('cashBalance', 0)
-            print(cash_balance)
-            return cash_balance
+            securities_account = account.get('securitiesAccount', {})
+            initial_balances = securities_account.get('initialBalances', {})
+            return initial_balances.get('cashBalance', 0)
             
     except Exception as e:
         print(f"Error fetching account information: {str(e)}")

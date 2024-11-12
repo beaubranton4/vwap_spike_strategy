@@ -405,19 +405,34 @@ class ExecuteStrategy:
                 symbol not in self.active_short_positions and 
                 symbol not in self.closed_positions):
                 
+                # Calculate order details
+                limit_price = max(symbol_data['Target Entry'], price)
+                quantity = int(symbol_data['Shares'])  # Get quantity from dataframe
+                order_value = limit_price * quantity
+                
+                # Get available cash
+                try:
+                    cash_balance = get_cash_balance(self.client) - 1000 #Ensure we have at least $1000 left over
+                    if order_value > cash_balance:
+                        logger.warning(f"\n{'='*50}")
+                        logger.warning(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                                    f"❌ Insufficient funds for order: ${order_value:.2f} > ${cash_balance:.2f}")
+                        logger.warning(f"{'='*50}\n")
+                        return
+                        
+                except Exception as e:
+                    logger.error(f"Error checking cash balance: {str(e)}")
+                    return
+                    
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                           f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
+                logger.info(f"Order Details: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}")
                 
-                # Place the short order only if not using mock data
                 if not self.use_mock_data:
-                    limit_price = max(symbol_data['Target Entry'], price)
-                    quantity = 1
-                    
                     try:
                         order_result = place_short_order(self.client, symbol, quantity, limit_price)
                         
-                        # Only add to active positions if order was successful
                         if order_result.get('status') == 'SUCCESS':
                             logger.info(f"✅ Order successfully placed and confirmed")
                             self.active_short_positions[symbol] = price  # Store entry price
@@ -431,19 +446,21 @@ class ExecuteStrategy:
                     logger.info(f"✅ Mock data mode: Order would have been placed")
                     self.active_short_positions[symbol] = price  # Store entry price
 
-                # Track the signal regardless of mock/real mode
+                # Track the signal
                 new_event = pd.DataFrame([{
                     'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
                     'symbol': symbol,
                     'price': price,
+                    'quantity': quantity,
+                    'order_value': order_value,
                     'event_type': 'SHORT_SIGNAL',
-                    'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
+                    'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f} | " +
+                              f"Order: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}"
                 }])
                 self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
                 
                 logger.info(f"{'='*50}\n")
                 
-                # Important: Keep the stream alive by not blocking
                 sleep(0.1)  # Small delay to prevent overwhelming the system
                     
         except Exception as e:
