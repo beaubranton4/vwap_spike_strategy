@@ -2,12 +2,18 @@
     
     - Add check to ensure there is enough cash to buy the stock.
         - Also must check stock was actually shorted before checking for stop loss and profit take. (can use active_short_positions but must verify against reality)
-
-    - End of day closing should be market order.
+    - Fix this streaming issue: (THINK THIS HAS TO DO WITH CALLING GET CASH BALANCE DURING STREAMING)
+        - INFO:Schwabdev.Stream:Connecting to streaming server...
+        - ERROR:Schwabdev.Stream:cannot call recv while another coroutine is already waiting for the next message
+        - WARNING:Schwabdev.Stream:Stream connection lost to server, reconnecting...
+    - End of day closing should be market order. Maybe all sells should me market order? at least stop loss. 
+    - Update pre market screener to not use a stream and instead just check price history. 1 minute before market open. use 1m timeframe.
+    - Remove stock from stream if the position is closed. If there are no positions left, then stop the stream.
     
 
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
-    - Make sure we aren't spending cash that we don't have
+    - Ensure all criteria like buy time threshold are inputted for production runs
+        - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS
     - Make all functions async
     - Tie all these pieces together with scheduler (Mage?)
         - Schedule screener to run at 5 pm PT every day.

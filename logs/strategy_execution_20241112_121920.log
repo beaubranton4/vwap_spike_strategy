@@ -1,0 +1,32 @@
+2024-11-12 12:19:20,896 | INFO | Logging to: logs/strategy_execution_20241112_121920.log
+2024-11-12 12:19:20,897 | INFO | Starting VWAP spike strategy execution...
+2024-11-12 12:19:20,897 | INFO | 
+==================================================
+2024-11-12 12:19:20,897 | INFO | Starting Strategy with Stocks:
+2024-11-12 12:19:20,897 | INFO | LYFT   | Target Entry: $19.32
+2024-11-12 12:19:20,897 | INFO | ==================================================
+
+2024-11-12 12:19:20,897 | INFO | Starting pre-market tracking phase...
+2024-11-12 12:19:20,897 | INFO | 
+==================================================
+2024-11-12 12:19:20,897 | INFO | Starting pre-market tracking...
+2024-11-12 12:19:20,897 | INFO | Initial symbols: 1
+2024-11-12 12:19:20,897 | INFO | Current time: 15:19:20 ET
+2024-11-12 12:19:20,897 | INFO | Market opens at: 09:30:00 ET
+2024-11-12 12:19:20,897 | INFO | ==================================================
+
+2024-11-12 12:19:21,490 | INFO | 
+==================================================
+2024-11-12 12:19:21,490 | INFO | Starting main trading stream...
+2024-11-12 12:19:21,490 | INFO | Tracking 1 symbols
+2024-11-12 12:19:21,490 | INFO | Market open: 09:30:00 ET
+2024-11-12 12:19:21,490 | INFO | Strategy end: 15:30:00 ET
+2024-11-12 12:19:21,490 | INFO | ==================================================
+
+2024-11-12 12:19:22,009 | INFO | ✅ JUST TESTING COVER SHORT: Order successfully placed and confirmed
+2024-11-12 12:19:22,009 | INFO | ✅ JUST TESTING: Order successfully placed and confirmed
+2024-11-12 12:19:22,009 | INFO | 
+==================================================
+2024-11-12 12:19:22,009 | INFO | 15:19:22 ET | LYFT: $18.35 | NO SIGNAL - Stock is already Shorted @ $18.35
+2024-11-12 12:19:22,009 | INFO | ==================================================
+

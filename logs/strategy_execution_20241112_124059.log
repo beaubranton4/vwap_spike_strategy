@@ -1,0 +1,34 @@
+2024-11-12 12:40:59,117 | INFO | Logging to: logs/strategy_execution_20241112_124059.log
+2024-11-12 12:40:59,117 | INFO | Starting VWAP spike strategy execution...
+2024-11-12 12:40:59,117 | INFO | 
+==================================================
+2024-11-12 12:40:59,117 | INFO | Starting Strategy with Stocks:
+2024-11-12 12:40:59,118 | INFO | LYFT   | Target Entry: $19.32
+2024-11-12 12:40:59,118 | INFO | ==================================================
+
+2024-11-12 12:40:59,118 | INFO | Starting pre-market tracking phase...
+2024-11-12 12:40:59,118 | INFO | 
+==================================================
+2024-11-12 12:40:59,118 | INFO | Starting pre-market tracking...
+2024-11-12 12:40:59,118 | INFO | Initial symbols: 1
+2024-11-12 12:40:59,118 | INFO | Current time: 15:40:59 ET
+2024-11-12 12:40:59,118 | INFO | Market opens at: 09:30:00 ET
+2024-11-12 12:40:59,118 | INFO | ==================================================
+
+2024-11-12 12:40:59,839 | INFO | 
+==================================================
+2024-11-12 12:40:59,839 | INFO | Starting main trading stream...
+2024-11-12 12:40:59,839 | INFO | Tracking 1 symbols
+2024-11-12 12:40:59,839 | INFO | Market open: 09:30:00 ET
+2024-11-12 12:40:59,839 | INFO | Strategy end: 15:59:00 ET
+2024-11-12 12:40:59,839 | INFO | ==================================================
+
+2024-11-12 12:41:00,544 | INFO | 
+==================================================
+2024-11-12 12:41:00,544 | INFO | 15:41:00 ET | LYFT: $18.30 | 🔴 SHORT SIGNAL | Target: $19.32
+2024-11-12 12:41:00,544 | INFO | Order Details: 1 shares @ $19.32 = $19.32
+2024-11-12 12:41:00,544 | INFO | ✅ JUST TESTING: Order successfully placed and confirmed
+2024-11-12 12:41:00,545 | INFO | ==================================================
+
+2024-11-12 12:41:10,225 | INFO | Trading events saved to mock_stream/trading_events_20241112_124110.xlsx
+2024-11-12 12:41:10,225 | INFO | Price details saved to mock_stream/details_20241112_124110.xlsx

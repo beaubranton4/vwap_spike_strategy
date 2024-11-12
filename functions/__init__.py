@@ -15,7 +15,8 @@ from .schwab_functions import (
     get_price_history_with_schwabdev,
     get_account_balance,
     get_cash_balance,
-    place_short_order
+    place_short_order,
+    cover_short_order_limit
 )
 
 from .screener_functions import (
@@ -39,5 +40,6 @@ __all__ = [
     'get_cash_balance',
     'run_vwap_spike_screener',
     'ExecuteStrategy',
-    'place_short_order'
+    'place_short_order',
+    'cover_short_order_limit'
 ]

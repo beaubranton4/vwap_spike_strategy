@@ -51,7 +51,7 @@ def main():
     screener_results = pd.read_excel(f'screener/daily_screener_signals/{selected_date}.xlsx')
     
     # DOUBLE CHECK STRATEGY TO SEE IF WE CAN BUY PRE-MARKET
-    strategy = ExecuteStrategy(use_mock_data=True)
+    strategy = ExecuteStrategy(use_mock_data=False)
     strategy.execute_vwap_spike_strategy(screener_results)
 
     ##NEED TO FIX THE MARKETDATASTREAMER FROM EXECUTE STRATEGY FILE

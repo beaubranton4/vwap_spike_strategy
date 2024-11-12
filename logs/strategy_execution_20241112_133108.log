@@ -1,0 +1,27 @@
+2024-11-12 13:31:08,866 | INFO | Logging to: logs/strategy_execution_20241112_133108.log
+2024-11-12 13:31:08,866 | INFO | Starting VWAP spike strategy execution...
+2024-11-12 13:31:08,866 | INFO | 
+==================================================
+2024-11-12 13:31:08,866 | INFO | Starting Strategy with Stocks:
+2024-11-12 13:31:08,866 | INFO | LYFT   | Target Entry: $19.32
+2024-11-12 13:31:08,866 | INFO | ==================================================
+
+2024-11-12 13:31:08,866 | INFO | Starting pre-market tracking phase...
+2024-11-12 13:31:08,866 | INFO | 
+==================================================
+2024-11-12 13:31:08,866 | INFO | Starting pre-market tracking...
+2024-11-12 13:31:08,866 | INFO | Initial symbols: 1
+2024-11-12 13:31:08,866 | INFO | Current time: 16:31:08 ET
+2024-11-12 13:31:08,866 | INFO | Market opens at: 09:30:00 ET
+2024-11-12 13:31:08,866 | INFO | ==================================================
+
+2024-11-12 13:31:09,877 | INFO | Stopping pre-market streamer...
+2024-11-12 13:31:09,878 | INFO | Pre-market streamer stopped successfully
+2024-11-12 13:31:09,878 | INFO | 
+==================================================
+2024-11-12 13:31:09,878 | INFO | Starting main trading stream...
+2024-11-12 13:31:09,878 | INFO | Tracking 1 symbols
+2024-11-12 13:31:09,878 | INFO | Market open: 09:30:00 ET
+2024-11-12 13:31:09,878 | INFO | Strategy end: 16:30:00 ET
+2024-11-12 13:31:09,878 | INFO | ==================================================
+
