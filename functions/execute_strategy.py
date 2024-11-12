@@ -22,6 +22,30 @@ dotenv.load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Add file handler for saving logs
+def setup_logger():
+    # Create logs directory if it doesn't exist
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+        
+    # Create a unique log file name with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_file = f'logs/strategy_execution_{timestamp}.log'
+    
+    # Create file handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.INFO)
+    
+    # Create formatter
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    # Add file handler to logger
+    logger.addHandler(file_handler)
+    
+    logger.info(f"Logging to: {log_file}")
+    return log_file
+
 @dataclass
 class ExecuteStrategyConfig:
     """Configuration settings for the market data stream"""
@@ -54,10 +78,19 @@ class ExecuteStrategy:
         # Set up timezone
         self.et_timezone = pytz.timezone('US/Eastern')
         
-        # Initialize streamer first
-        if not use_mock_data:
+        # Initialize client for both mock and real modes
+        try:
             self._setup_authentication()
             self._initialize_client()
+        except Exception as e:
+            if not use_mock_data:
+                raise
+            else:
+                logger.warning(f"Failed to initialize real client in mock mode: {e}")
+                self.client = None
+        
+        # Initialize streamer
+        if not use_mock_data:
             self.streamer = self.client.stream
         else:
             logger.info("Initializing with mock data streamer")
@@ -397,7 +430,7 @@ class ExecuteStrategy:
             if price < symbol_data['Target Entry']:
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                    f"${price:.2f} | NO SIGNAL - Price did not hit target")
+                    f"${price:.2f} | NO SIGNAL - Price did not hit target entry of ${symbol_data['Target Entry']:.2f}")
                 logger.info(f"{'='*50}\n")
                 return
 
@@ -520,6 +553,10 @@ class ExecuteStrategy:
     def execute_vwap_spike_strategy(self, df: pd.DataFrame) -> None:
         """Main method to execute the VWAP spike trading strategy"""
         try:
+            # Setup logging
+            log_file = setup_logger()
+            logger.info("Starting VWAP spike strategy execution...")
+            
             self.df = df
             
             # Print initial stock list in a clean format
