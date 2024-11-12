@@ -12,6 +12,7 @@ from .backtest_functions import (
 from .schwab_functions import (
     auto_authenticate,
     get_stock_price_history,
+    get_price_history_with_schwabdev,
     get_account_balance,
     get_cash_balance,
     place_short_order
@@ -33,6 +34,7 @@ __all__ = [
     'buy_sell',
     'auto_authenticate',
     'get_stock_price_history',
+    'get_price_history_with_schwabdev',
     'get_account_balance',
     'get_cash_balance',
     'run_vwap_spike_screener',

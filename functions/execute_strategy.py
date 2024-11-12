@@ -402,38 +402,42 @@ class ExecuteStrategy:
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                           f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
                 
-                # Place the short order
-                limit_price = max(symbol_data['Target Entry'], price)
-                quantity = 1
+                # Place the short order only if not using mock data
+                if not self.use_mock_data:
+                    limit_price = max(symbol_data['Target Entry'], price)
+                    quantity = 1
+                    
+                    try:
+                        order_result = place_short_order(self.client, symbol, quantity, limit_price)
+                        
+                        # Only add to active positions if order was successful
+                        if order_result.get('status') == 'SUCCESS':
+                            logger.info(f"✅ Order successfully placed and confirmed")
+                            self.active_short_positions.add(symbol)
+                        else:
+                            logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
+                        
+                    except Exception as e:
+                        logger.error(f"❌ Error during order placement: {str(e)}")
                 
-                try:
-                    order_result = place_short_order(self.client, symbol, quantity, limit_price)
-                    
-                    # Only add to active positions if order was successful
-                    if order_result.get('status') == 'SUCCESS':
-                        logger.info(f"✅ Order successfully placed and confirmed")
-                        self.active_short_positions.add(symbol)
-                        
-                        # Track the signal
-                        new_event = pd.DataFrame([{
-                            'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-                            'symbol': symbol,
-                            'price': price,
-                            'event_type': 'SHORT_SIGNAL',
-                            'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
-                        }])
-                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
-                    else:
-                        logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
-                        
-                except Exception as e:
-                    logger.error(f"❌ Error during order placement: {str(e)}")
-                    
+                else:
+                    logger.info(f"✅ Mock data mode: Order would have been placed")
+                    self.active_short_positions.add(symbol)
+                # Track the signal regardless of mock/real mode
+                new_event = pd.DataFrame([{
+                    'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'symbol': symbol,
+                    'price': price,
+                    'event_type': 'SHORT_SIGNAL',
+                    'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f}"
+                }])
+                self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                
                 logger.info(f"{'='*50}\n")
                 
                 # Important: Keep the stream alive by not blocking
                 sleep(0.1)  # Small delay to prevent overwhelming the system
-                   
+                    
         except Exception as e:
             logger.error(f"Error in entry conditions for {symbol}: {e}")
             logger.error(f"Full traceback: {traceback.format_exc()}")
@@ -459,7 +463,7 @@ class ExecuteStrategy:
             current_time = datetime.now(self.et_timezone)
         
         seconds_to_close = (self.strategy_end_time - current_time).total_seconds()
-        
+        print(f"Seconds to close: {seconds_to_close}")
         if seconds_to_close <= 30:
             remaining_positions = self.active_short_positions - self.closed_positions
             if remaining_positions:

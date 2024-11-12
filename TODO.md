@@ -1,11 +1,8 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
     
     - check if purchase price is always target entry and sell prices are based on that or the actual purchase price. Ex. what if the stock opens the day 10% above target entry.
-    - May need to set based on purchase price and not target entry - refer to backtest.
+    - May need to set stops and profit taking based on purchase price and not target entry - refer to backtest.
         - Also must check stock was actually shorted before checking for stop loss and profit take. (can use active_short_positions but must verify against reality)
-    - update to not use a manually set market open and close time. Use the API to get the market open and close time.
-    Have to fix auto authentication: it broke when i ran screener and streamer back to back.
-    - Add back condition about buy time threshold 1030 am ET
     
 
     - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
@@ -34,6 +31,7 @@
 - OTHER TO-DO's
     
     - Add better error handling
+    - Use Schwabdev API for all functions in backtest and screener .ipynb
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz
     - See if there's a way we can filter out stocks hard to borrow or have high interest rates (based on float and market cap?)
     - Maybe i can keep my own DB of historical data for stocks and use that to run my screener?

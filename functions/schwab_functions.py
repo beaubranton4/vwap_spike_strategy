@@ -9,6 +9,7 @@ import pytz
 from schwabdev import Client
 from typing import Dict
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -146,21 +147,58 @@ def get_stock_price_history(symbol, access_token, period_type, period, frequency
     # The end date, Time in milliseconds since the UNIX epoch eg 1451624400000
     # If not specified, the endDate will default to the market close of previous business day.
 
+def get_price_history_with_schwabdev(client, ticker, period_type, period, frequency_type, frequency, 
+                                    start_time, end_time, need_extended_hours_data, need_previous_close,
+                                    max_retries=3, retry_delay=5):
+    """
+    Wrapper function for schwabdev price_history with retry logic
+    Returns the same format as the original get_stock_price_history function
+    """
+    for attempt in range(max_retries):
+        try:
+            response = client.price_history(
+                symbol=ticker,
+                periodType=period_type,
+                period=period,
+                frequencyType=frequency_type,
+                frequency=frequency,
+                startDate=start_time,
+                endDate=end_time,
+                needExtendedHoursData=need_extended_hours_data,
+                needPreviousClose=need_previous_close
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 401:  # Authentication error
+                logger.warning(f"Authentication error on attempt {attempt + 1} for {ticker}, retrying...")
+                time.sleep(retry_delay)
+                # Try to refresh tokens
+                try:
+                    client.tokens.update_tokens()
+                except Exception as e:
+                    logger.error(f"Token refresh failed: {str(e)}")
+            else:
+                logger.error(f"API error for {ticker}: {response.status_code} - {response.text}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                else:
+                    return None
+                
+        except Exception as e:
+            logger.error(f"Exception getting price history for {ticker} (attempt {attempt + 1}): {str(e)}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                return None
+    
+    return None
+
 
     ############################FUNCTIONS FOR PLACING ORDERS AND MONITORING ACCOUNT#############################
 
-def get_account_balance():
+def get_account_balance(client):
     try:
-        
-        # Initialize client with direct token data
-        client = schwabdev.Client(
-            os.getenv('appKey'),
-            os.getenv('appSecret'),
-            os.getenv('callback_url'),
-            tokens_file="auth/schwab_dev_tokens.json",  # Pass token data directly
-            timeout=10, 
-            update_tokens_auto=True
-        )
         
         # Rest of the function remains the same
         response = client.account_details_all()
@@ -256,3 +294,4 @@ def place_short_order(client: Client, symbol: str, quantity: int, price: float) 
     except Exception as e:
         logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
         return {'status': 'ERROR'}
+
