@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, time, date
 import pandas as pd
 import glob
 import pandas_market_calendars as mcal
-from functions.schwab_functions import get_account_balance
 import schwabdev
 import itertools
 ######################################## LOADING SCHWAB API VARIABLES #########################################
@@ -49,7 +48,7 @@ VOL_SPIKE_THRESHOLD = [5]  # Abnormally high volume that stands out on a chart
 PRICE_SPIKE_THRESHOLD = [0.05]  # Must move the price x%
 TIME_SIG_THRESHOLD = [time(hour=12, minute=30, second=0)]
 BUY_TIME_THRESHOLD = [time(hour=10, minute=30, second=0)]
-SELL_TIME_THRESHOLD = [time(hour=18, minute=30, second=0)]
+SELL_TIME_THRESHOLD = [time(hour=15, minute=30, second=0)]
 
 ####################################### CREATE VARIABLES FOR INPUT STRATEGY TO TEST ##########################
 bet_size_index = 0
@@ -114,4 +113,5 @@ open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.tim
 nyse_days = nyse.valid_days(start_date=st, end_date=en)
 valid_trading_days = pd.Series(nyse_days).dt.date
 
-schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en))
+en_extended = en + timedelta(days=10)
+schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en_extended))

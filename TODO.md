@@ -1,25 +1,24 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    
-    - Add check to ensure there is enough cash to buy the stock.
-        - Also must check stock was actually shorted before checking for stop loss and profit take. (can use active_short_positions but must verify against reality)
-    - Fix this streaming issue: (THINK THIS HAS TO DO WITH CALLING GET CASH BALANCE DURING STREAMING)
-        - INFO:Schwabdev.Stream:Connecting to streaming server...
-        - ERROR:Schwabdev.Stream:cannot call recv while another coroutine is already waiting for the next message
-        - WARNING:Schwabdev.Stream:Stream connection lost to server, reconnecting...
-    - End of day closing should be market order. Maybe all sells should me market order? at least stop loss. 
-    - Update pre market screener to not use a stream and instead just check price history. 1 minute before market open. use 1m timeframe.
-    - Remove stock from stream if the position is closed. If there are no positions left, then stop the stream.
-    
 
-    - Start streamer so that it's always running during market hours (inputs: ticker, buy price, time threshold to buy, sell prices (stop and take), time threshold to sell)
+    - Update pre market screener to not use a stream and instead just check price history. 1 minute before market open. use 1m timeframe.
+        - Seperate pre market and market hours streame
     - Ensure all criteria like buy time threshold are inputted for production runs
         - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS
-    - Make all functions async
-    - Tie all these pieces together with scheduler (Mage?)
-        - Schedule screener to run at 5 pm PT every day.
-        - Schedule streamer to run from 12 am PT to 4pm PT every day.
-    - Test as print statements before making trade calls to Schwab API
-    - Run on VM so it continuously runs
+    - Use pre market screener and run streamer with actual trades to see how it goes manually first.
+
+------        
+        
+    - Tie all these pieces together with scheduler (Mage? or some other scheduler)
+        - Schedule screener to run at 5 pm PT every day and save file. (to DB?)
+        - pre market screener to run at 30-60 seconds before market open and save another file. (to DB?)
+        - Schedule streamer to run from Market Open to 4pm PT every day 
+
+            <!-- - If you want to start the streamer automatically when the market opens then instead of `streamer.start()` use the call `streamer.start_auto(receiver=print, start_time=datetime.time(9, 29, 0), stop_time=datetime.time(16, 0, 0), on_days=(0,1,2,3,4), now_timezone=zoneinfo.ZoneInfo("America/New_York"), daemon=True)`, shown are the default values which will start & stop the streamer during normal market hours (9:30am-4:00pm). If you want to start and/or stop the streamer at specific times then set the `start_time` and `stop_time` parameters to `datetime.time(HH,MM,SS)`, times are in EST ("America/New_York"); You can also change the days when the streamer starts by the `on_days` parameter, the default (Mon-Fri) is `on_days=(0,1,2,3,4)`. Starting the stream automatically will preserve the previous subscriptions. If you want to use a custom timezone for now then set the `now_timezone` parameter to `zoneinfo.ZoneInfo(...)`. -->
+    
+    - Run on VM so it continuously runs (find out best way to deploy trading bot)
+
+
+
     - Add trade history log with profit / loss etc. Join with the screener output (Ensure it matches with backtest)
     Work on Order functions and integrate:
     - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
@@ -31,12 +30,23 @@
         - Sell at stop
         - Sell at take
         - Sell at time threshold
-    - Test with very small amounts first. Ensure failsafes so i don't lose all my money while testing.
+    - Test with very small amounts first (divide account size by 100 and try rerunning screener).
+    - Ensure failsafes so i don't lose all my money while testing.
     - How do we ensure this strategy runs every day without touching it?
 
 
 - OTHER TO-DO's
     
+    - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
+                POSITION
+                ENTRY_TIME
+                ACCOUNT_SIZE
+                BUYS
+                RESULT_INDEXER
+                BOUGHT_TODAY
+                results dataframe
+    - Check if there's a way to see the cost of shorting a stock before making a trade call
+    - Tune limit and market orders
     - Add better error handling
     - Use Schwabdev API for all functions in backtest and screener .ipynb
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz

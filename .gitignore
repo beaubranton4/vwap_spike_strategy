@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 secrets.json
 *tokens.json*
+logs/
+mock_stream/
+backtest/backtest_results/
+archive/
+trade_log/
+screener/daily_screener_signals/

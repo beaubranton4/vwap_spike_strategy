@@ -16,7 +16,15 @@ from .schwab_functions import (
     get_account_balance,
     get_cash_balance,
     place_short_order,
-    cover_short_order_limit
+    cover_short_order,
+    check_positions,
+    check_position_match,
+    get_all_positions
+)
+
+# Importing authentication functions
+from .manage_authentication import (
+    get_authenticated_client
 )
 
 from .screener_functions import (
@@ -29,17 +37,31 @@ from .execute_strategy import (
 
 # Define __all__ to specify what is imported with *
 __all__ = [
+
+    # Backtest functions
     'next_business_day',
     'buy_sell_signal',
     'calculate_sell_results',
     'buy_sell',
+    
+    # Schwab API functions
     'auto_authenticate',
     'get_stock_price_history',
     'get_price_history_with_schwabdev',
     'get_account_balance',
     'get_cash_balance',
-    'run_vwap_spike_screener',
-    'ExecuteStrategy',
     'place_short_order',
-    'cover_short_order_limit'
+    'cover_short_order',
+    'check_positions',
+    'check_position_match',
+    'get_all_positions',
+    
+    # Authentication functions
+    'get_authenticated_client',   
+    
+    # Screener functions
+    'run_vwap_spike_screener',   
+    
+    # Strategy execution
+    'ExecuteStrategy'
 ]

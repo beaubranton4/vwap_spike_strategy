@@ -1,11 +1,19 @@
 import numpy as np
-from datetime import timedelta
+from datetime import timedelta, datetime
 import pandas as pd
+import pandas_market_calendars as mcal
+
 
 ############################################## ALL FUNCTIONS ########################################################
 
 def next_business_day(today):
     next_day = today + timedelta(days=1)
+    en = datetime.now()
+    st = en - timedelta(days=20)
+    en_extended = en + timedelta(days=10)
+    nyse = mcal.get_calendar('NYSE')
+    nyse_days = nyse.valid_days(start_date=st, end_date=en_extended)
+    valid_trading_days = pd.Series(nyse_days).dt.date
     while next_day.weekday() in [5,6] or next_day.weekday() not in valid_trading_days:
         next_day += timedelta(days=1)
     return next_day
