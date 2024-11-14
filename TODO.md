@@ -1,9 +1,8 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-    - Update pre market screener to not use a stream and instead just check price history. 1 minute before market open. use 1m timeframe.
-        - Seperate pre market and market hours streame
+
     - Ensure all criteria like buy time threshold are inputted for production runs
-        - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS
+        - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS, ACCOUNT SIZE (in Screener)
     - Use pre market screener and run streamer with actual trades to see how it goes manually first.
 
 ------        

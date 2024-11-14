@@ -531,8 +531,9 @@ class ExecuteStrategy:
                             logger.error(f"❌ Error covering short position: {str(e)}")
                 logger.info(f"{'='*50}\n")
                 
-                # Add to closed positions
+                # Add to closed positions and remove from active positions
                 self.closed_positions.add(symbol)
+                del self.active_short_positions[symbol] 
                 
                 # Track the exit
                 new_event = pd.DataFrame([{
@@ -611,7 +612,7 @@ class ExecuteStrategy:
                     
                     # Add to closed positions
                     self.closed_positions.add(symbol)
-                
+                    del self.active_short_positions[symbol] 
                 logger.info(f"{'='*50}\n")
 
     def execute_vwap_spike_strategy(self, df: pd.DataFrame) -> None:
@@ -633,26 +634,27 @@ class ExecuteStrategy:
                 logger.info(f"{row['Ticker']:<6} | Target Entry: ${row['Target Entry']:.2f}")
             logger.info("="*50 + "\n")
 
-            pre_market_symbols = df['Ticker'].unique().tolist()
+            symbols = df['Ticker'].unique().tolist()
 
             if self.use_mock_data:
                 # Generate base prices for mock data
                 base_prices = {}
-                for symbol in pre_market_symbols:
+                for symbol in symbols:
                     target_entry = df.loc[df['Ticker'] == symbol, 'Target Entry'].iloc[0]
                     discount = random.uniform(0.001, 0.02)  # 0.1% to 2% discount
                     base_prices[symbol] = target_entry * (1 - discount)
                 # Update mock streamer configuration
-                self.streamer.symbols = pre_market_symbols
+                self.streamer.symbols = symbols
                 self.streamer.base_prices = base_prices
             
             ####################### First track pre-market highs and filter stocks #######################
-            logger.info("Starting pre-market tracking phase...")
-            filtered_df = self.track_premarket_highs(df)
+            # logger.info("Starting pre-market tracking phase...")
+            # filtered_df = self.track_premarket_highs(df)
             
-            # Update streamer with filtered symbols
-            symbols = filtered_df['Ticker'].unique().tolist()
+            # # Update streamer with filtered symbols
+            # symbols = filtered_df['Ticker'].unique().tolist()
             
+            ####################### Start the main trading stream #######################
             # Start the main trading stream
             logger.info("\n" + "="*50)
             logger.info("Starting main trading stream...")
@@ -660,17 +662,8 @@ class ExecuteStrategy:
             logger.info(f"Market open: {self.market_open_time.strftime('%H:%M:%S')} ET")
             logger.info(f"Strategy end: {self.strategy_end_time.strftime('%H:%M:%S')} ET")
             logger.info("="*50 + "\n")
+        
             
-            ####################### Start the main trading stream #######################
-            # Stop any existing stream and create new one
-            if hasattr(self, 'streamer') and self.streamer is not None:
-                try:
-                    self.streamer.stop()
-                    logger.info("Stopped existing streamer")
-                    sleep(1)  # Give time for cleanup
-                except Exception as e:
-                    logger.error(f"Error stopping existing streamer: {e}")
-
             # Initialize new stream
             if not self.use_mock_data:
                 self.streamer = self.client.stream
@@ -796,143 +789,144 @@ class ExecuteStrategy:
                 except Exception as e:
                     logger.error(f"Error stopping strategy streamer: {e}")
 
-######################### PRE-MARKET TRACKING ######################### 
+######################### PRE-MARKET TRACKING FUNCTIONS ######################### 
 
-    def track_premarket_highs(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Track pre-market highs and filter stocks before market open"""
-        self.df = df.copy()
-        self.message_buffer = []
-        self.symbols_to_remove = set()
+    # def track_premarket_highs(self, df: pd.DataFrame) -> pd.DataFrame:
+    #     """Track pre-market highs and filter stocks before market open"""
+    #     self.df = df.copy()
+    #     self.message_buffer = []
+    #     self.symbols_to_remove = set()
         
-        logger.info("\n" + "="*50)
-        logger.info("Starting pre-market tracking...")
-        logger.info(f"Initial symbols: {len(self.df)}")
-        logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
-        logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
-        logger.info("="*50 + "\n")
+    #     logger.info("\n" + "="*50)
+    #     logger.info("Starting pre-market tracking...")
+    #     logger.info(f"Initial symbols: {len(self.df)}")
+    #     logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
+    #     logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
+    #     logger.info("="*50 + "\n")
         
-        try:
-            self.streamer.start(self.handle_stream_message)
-            symbols = self.df['Ticker'].unique().tolist()
-            self.streamer.send(self.streamer.level_one_equities(
-                ",".join(symbols), 
-                ExecuteStrategyConfig.L1_FIELDS
-            ))
+    #     try:
+    #         self.streamer.start(self.handle_stream_message)
+    #         symbols = self.df['Ticker'].unique().tolist()
+    #         self.streamer.send(self.streamer.level_one_equities(
+    #             ",".join(symbols), 
+    #             ExecuteStrategyConfig.L1_FIELDS
+    #         ))
             
-            self.is_running = True
-            start_time = datetime.now()
-            last_status_time = start_time
+    #         self.is_running = True
+    #         start_time = datetime.now()
+    #         last_status_time = start_time
             
-            while self.is_running and self.get_current_time() < self.market_open_time:
-                if self.use_mock_data:
-                    mock_message = self.streamer.generate_mock_message()
-                    self.handle_stream_message(mock_message)
+    #         while self.is_running and self.get_current_time() < self.market_open_time:
+    #             if self.use_mock_data:
+    #                 mock_message = self.streamer.generate_mock_message()
+    #                 self.handle_stream_message(mock_message)
                 
-                while self.message_buffer:
-                    try:
-                        message = json.loads(self.message_buffer.pop(0))
-                        self.process_premarket_message(message)
-                    except Exception as e:
-                        logger.error(f"Error processing pre-market message: {e}")
+    #             while self.message_buffer:
+    #                 try:
+    #                     message = json.loads(self.message_buffer.pop(0))
+    #                     self.process_premarket_message(message)
+    #                 except Exception as e:
+    #                     logger.error(f"Error processing pre-market message: {e}")
                 
-                current_time = self.get_current_time()
-                if (current_time - last_status_time.astimezone(self.et_timezone)).seconds >= 3600:  # 1 hour
-                    self.print_premarket_status(current_time)
-                    last_status_time = current_time
+    #             current_time = self.get_current_time()
+    #             if (current_time - last_status_time.astimezone(self.et_timezone)).seconds >= 3600:  # 1 hour
+    #                 self.print_premarket_status(current_time)
+    #                 last_status_time = current_time
                 
-                # Check if we've reached market open time and break if we have
-                if self.get_current_time() >= self.market_open_time:
-                    logger.info("Market open time reached. Stopping pre-market tracking...")
-                    self.is_running = False
-                    break
+    #             # Check if we've reached market open time and break if we have
+    #             if self.get_current_time() >= self.market_open_time:
+    #                 logger.info("Market open time reached. Stopping pre-market tracking...")
+    #                 self.is_running = False
+    #                 break
                     
-                sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
+    #             sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
             
-            # Final summary before market open
-            self.print_premarket_summary()
+    #         # Final summary before market open
+    #         self.print_premarket_summary()
             
-            # Remove filtered symbols and return updated DataFrame
-            if self.symbols_to_remove:
-                self.df = self.df[~self.df['Ticker'].isin(self.symbols_to_remove)]
+    #         # Remove filtered symbols and return updated DataFrame
+    #         if self.symbols_to_remove:
+    #             self.df = self.df[~self.df['Ticker'].isin(self.symbols_to_remove)]
             
-            return self.df
+    #         return self.df
             
-        except Exception as e:
-            logger.error(f"Error during pre-market tracking: {e}")
-            raise
-        finally:
-            self.is_running = False  # Ensure is_running is set to False
-            if hasattr(self, 'streamer') and self.streamer is not None:
-                try:
-                    self.streamer.stop()
-                    logger.info("Pre-market streamer stopped successfully")
-                except Exception as e:
-                    logger.error(f"Error stopping pre-market streamer: {e}")
+    #     except Exception as e:
+    #         logger.error(f"Error during pre-market tracking: {e}")
+    #         raise
+    #     finally:
+    #         self.is_running = False  # Ensure is_running is set to False
+    #         if hasattr(self, 'streamer') and self.streamer is not None:
+    #             try:
+    #                 self.streamer.stop()
+    #                 logger.info("Pre-market streamer stopped successfully")
+    #             except Exception as e:
+    #                 logger.error(f"Error stopping pre-market streamer: {e}")
 
-    def process_premarket_message(self, message: Dict[str, Any]) -> None:
-        """Process pre-market data messages"""
-        try:
-            for rtype, services in message.items():
-                if rtype == "data":
-                    for service in services:
-                        contents = service.get("content", [])
-                        simulated_time = service.get("simulated_time", "Unknown time")
+    # def process_premarket_message(self, message: Dict[str, Any]) -> None:
+    #     """Process pre-market data messages"""
+    #     try:
+    #         for rtype, services in message.items():
+    #             if rtype == "data":
+    #                 for service in services:
+    #                     contents = service.get("content", [])
+    #                     simulated_time = service.get("simulated_time", "Unknown time")
                         
-                        for content in contents:
-                            if content.get('key') and content.get('1'):
-                                symbol = content.get('key')
-                                current_price = float(content.get('1'))
+    #                     for content in contents:
+    #                         if content.get('key') and content.get('1'):
+    #                             symbol = content.get('key')
+    #                             current_price = float(content.get('1'))
                                 
-                                # Initialize premarket_highs for the symbol if not exists
-                                if symbol not in self.premarket_highs:
-                                    self.premarket_highs[symbol] = current_price
+    #                             # Initialize premarket_highs for the symbol if not exists
+    #                             if symbol not in self.premarket_highs:
+    #                                 self.premarket_highs[symbol] = current_price
                                 
-                                if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
-                                    yesterday_high = self.df.loc[
-                                        self.df['Ticker'] == symbol, 
-                                        'Yesterday High'
-                                    ].iloc[0]
+    #                             if symbol in self.df['Ticker'].values and symbol not in self.symbols_to_remove:
+    #                                 yesterday_high = self.df.loc[
+    #                                     self.df['Ticker'] == symbol, 
+    #                                     'Yesterday High'
+    #                                 ].iloc[0]
                                     
-                                    # Update premarket high if current price is higher
-                                    if current_price > self.premarket_highs[symbol]:
-                                        self.premarket_highs[symbol] = current_price
-                                        logger.info(f"{simulated_time} | {symbol} New high: ${current_price:.2f} | Yesterday High: ${yesterday_high:.2f}")
+    #                                 # Update premarket high if current price is higher
+    #                                 if current_price > self.premarket_highs[symbol]:
+    #                                     self.premarket_highs[symbol] = current_price
+    #                                     logger.info(f"{simulated_time} | {symbol} New high: ${current_price:.2f} | Yesterday High: ${yesterday_high:.2f}")
                                     
-                                    if self.premarket_highs[symbol] > yesterday_high:
-                                        # Track removal event
-                                        new_event = pd.DataFrame([{
-                                            'timestamp': simulated_time,
-                                            'symbol': symbol,
-                                            'price': current_price,
-                                            'event_type': 'REMOVED_PREMARKET',
-                                            'details': f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
-                                        }])
-                                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
-                                        self.symbols_to_remove.add(symbol)
-                                        logger.info(f"{simulated_time} | {symbol} REMOVED - Breached yesterday's high")
-        except Exception as e:
-            logger.error(f"Error processing pre-market message: {str(e)}")
-            logger.error(f"Message content: {message}")
+    #                                 if self.premarket_highs[symbol] > yesterday_high:
+    #                                     # Track removal event
+    #                                     new_event = pd.DataFrame([{
+    #                                         'timestamp': simulated_time,
+    #                                         'symbol': symbol,
+    #                                         'price': current_price,
+    #                                         'event_type': 'REMOVED_PREMARKET',
+    #                                         'details': f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
+    #                                     }])
+    #                                     self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+    #                                     self.symbols_to_remove.add(symbol)
+    #                                     logger.info(f"{simulated_time} | {symbol} REMOVED - Breached yesterday's high")
+    #     except Exception as e:
+    #         logger.error(f"Error processing pre-market message: {str(e)}")
+    #         logger.error(f"Message content: {message}")
 
-    def print_premarket_status(self, simulated_time: datetime) -> None:
-        """Print periodic pre-market status update using simulated time"""
-        # Calculate hours until market open using simulated time
-        hours_to_open = (self.market_open_time - simulated_time).total_seconds() / 3600
+    # def print_premarket_status(self, simulated_time: datetime) -> None:
+    #     """Print periodic pre-market status update using simulated time"""
+    #     # Calculate hours until market open using simulated time
+    #     hours_to_open = (self.market_open_time - simulated_time).total_seconds() / 3600
         
-        logger.info("\n" + "="*50)
-        logger.info(f"Pre-market status - {simulated_time.strftime('%H:%M:%S')} ET")
-        logger.info(f"Hours until market open: {hours_to_open:.1f}")
-        logger.info(f"Symbols being tracked: {len(self.df) - len(self.symbols_to_remove)}")
-        logger.info(f"Symbols removed: {len(self.symbols_to_remove)}")
-        logger.info("="*50 + "\n")
+    #     logger.info("\n" + "="*50)
+    #     logger.info(f"Pre-market status - {simulated_time.strftime('%H:%M:%S')} ET")
+    #     logger.info(f"Hours until market open: {hours_to_open:.1f}")
+    #     logger.info(f"Symbols being tracked: {len(self.df) - len(self.symbols_to_remove)}")
+    #     logger.info(f"Symbols removed: {len(self.symbols_to_remove)}")
+    #     logger.info("="*50 + "\n")
 
-    def print_premarket_summary(self) -> None:
-        """Print final pre-market summary"""
-        if self.symbols_to_remove:
-            logger.info("\n" + "="*50)
-            logger.info("Pre-market tracking completed")
-            logger.info(f"Removed {len(self.symbols_to_remove)} symbols that exceeded yesterday's high:")
-            for symbol in sorted(self.symbols_to_remove):
-                logger.info(f"- {symbol}: Pre-market high ${self.premarket_highs[symbol]:.2f} > Yesterday high ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
-            logger.info(f"Symbols remaining: {len(self.df)} → {len(self.df) - len(self.symbols_to_remove)}")
-            logger.info("="*50 + "\n")
+    # def print_premarket_summary(self) -> None:
+    #     """Print final pre-market summary"""
+    #     if self.symbols_to_remove:
+    #         logger.info("\n" + "="*50)
+    #         logger.info("Pre-market tracking completed")
+    #         logger.info(f"Removed {len(self.symbols_to_remove)} symbols that exceeded yesterday's high:")
+    #         for symbol in sorted(self.symbols_to_remove):
+    #             logger.info(f"- {symbol}: Pre-market high ${self.premarket_highs[symbol]:.2f} > Yesterday high ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
+    #         logger.info(f"Symbols remaining: {len(self.df)} → {len(self.df) - len(self.symbols_to_remove)}")
+    #         logger.info("="*50 + "\n")
+
