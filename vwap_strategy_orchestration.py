@@ -47,19 +47,20 @@ def main():
     # )
     # print(f"Found {len(screener_results)} potential trades")
     
-    ############STEP 1.5: READ IN DAILY SCREENER RESULTS####################
+    ###########STEP 1.5: READ IN DAILY SCREENER RESULTS####################
     # Allow for custom date selection
     # tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     # today = datetime.now().strftime('%Y-%m-%d')
     selected_date = '2024-11-14'  # Can be modified to any date in YYYY-MM-DD format
-    screener_results = pd.read_excel(f'screener/daily_screener_signals/{selected_date}.xlsx')
-    print(f"Found {len(screener_results)} potential trades after daily screener")
+    # screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
+    # print(f"Found {len(screener_results)} potential trades after daily screener")
 
     ############STEP 2: RUN PREMARKET SCREENER (9:29am PT)####################
-    premarket_screener_results = run_premarket_screener(client, screener_results)
-    print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
+    # premarket_screener_results = run_premarket_screener(client, screener_results)
+    # print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
+    premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
     strategy = ExecuteStrategy(use_mock_data=False)
     strategy.execute_vwap_spike_strategy(premarket_screener_results)
     

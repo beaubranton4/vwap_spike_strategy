@@ -261,8 +261,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     stocks_to_trade['Shares Float'] = (stocks_to_trade['Float'].astype(float)/1000000).astype(str) + 'M'
     stocks_to_trade.sort_values(by = 'Market Capitalization',ascending = True,inplace = True)
     
-    output_file_path = 'screener/daily_screener_signals/' + str(day_of_backtest.date() + timedelta(days=1))+'.xlsx'
-    stocks_to_trade.to_excel(output_file_path, index=True, header=True)
+    output_file_path = 'screener/daily_screener_signals/' + str(day_of_backtest.date() + timedelta(days=1)) + '.csv'
+    stocks_to_trade.to_csv(output_file_path, index=True, header=True)
 
     print(datetime.now() - start_clock)
     print('Completed Screener Successfully')
@@ -346,7 +346,8 @@ def run_premarket_screener(client, symbols_df):
     
     # Remove the identified symbols from the DataFrame
     filtered_df = filtered_df[~filtered_df['Ticker'].isin(symbols_to_remove)]
-    
+    #I would like to save the filtered_df to a csv file
+    filtered_df.to_csv('screener/premarket_screener_signals/' + str(datetime.now().date()) + '.csv', index=False)
     # Print removed and remaining symbols
     print("Removed symbols:", symbols_to_remove)
     print("Remaining symbols:", filtered_df['Ticker'].tolist())

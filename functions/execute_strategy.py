@@ -348,7 +348,10 @@ class ExecuteStrategy:
                                         else:
                                             # print(f"Checking entry conditions for {symbol} in process_message")
                                             # Check entry conditions for new positions
-                                            self._check_entry_conditions(symbol, price, symbol_data, current_time)
+                                            if current_time.time() < self.market_open_time.time() or current_time.time() >= BUY_TIME_THRESHOLD[0]:
+                                                return
+                                            else:
+                                                self._check_entry_conditions(symbol, price, symbol_data, current_time)
                             
         except Exception as e:
             logger.error(f"Error processing message: {e}")
@@ -391,7 +394,7 @@ class ExecuteStrategy:
                               current_time: datetime) -> None:
         """Check if new short position should be opened"""
         try:
-
+            
             if price < symbol_data['Target Entry']:
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
@@ -429,18 +432,21 @@ class ExecuteStrategy:
                 
                 if not self.use_mock_data:
                     try:
-                        logger.info(f"✅ JUST TESTING: Order successfully placed and confirmed")
-                        self.active_short_positions[symbol] = price  # Store entry price for testing real streamer but not actually placing order
+                        #REAL STREAM BUT FAKE ORDER 
+                        # logger.info(f"✅ JUST TESTING: Order successfully placed and confirmed")
+                        # self.active_short_positions[symbol] = price  # Store entry price for testing real streamer but not actually placing order
                         
                         #PLACE ORDER
-                        # order_result = place_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
+                        order_result = place_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
                         
-                        # if order_result.get('status') == 'SUCCESS':
-                        #     logger.info(f"✅ Order successfully placed and confirmed")
-                        #     self.active_short_positions[symbol] = price  # Store entry price
-                        # else:
-                        #     logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
+                        if order_result.get('status') == 'SUCCESS':
+                            logger.info(f"✅ Order successfully placed and confirmed")
+                            self.active_short_positions[symbol] = price  # Store entry price
+                        else:
+                            logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
                         
+                        # END OF PLACE ORDER
+
                     except Exception as e:
                         logger.error(f"❌ Error during order placement: {str(e)}")
                 else:
@@ -484,8 +490,7 @@ class ExecuteStrategy:
                 if price >= stop_price:
                     limit_price = max(stop_price, price)
                     order_value = limit_price * quantity
-                    logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                              f"${price:.2f} | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
+                    
                     if not self.use_mock_data:
                         try:
                             # Verify position exists before attempting to cover
@@ -493,18 +498,22 @@ class ExecuteStrategy:
                                 logger.info(f"Attempting to cover short position for {symbol}")
                                 
                                 # PLACE ORDER
-                                # order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
+                                order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
                                 
-                                # if order_result.get('status') == 'SUCCESS':
-                                #     logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
-                                # else:
-                                #     logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
-                            
+                                if order_result.get('status') == 'SUCCESS':
+                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
+                                else:
+                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                
+                                # END OF PLACE ORDER
                             else:
                                 logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
                                 
                         except Exception as e:
                             logger.error(f"❌ Error covering short position: {str(e)}")
+                    else:
+                        logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                                  f"${price:.2f} | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
                 else:
                     limit_price = max(target_price, price)
                     order_value = limit_price * quantity
@@ -517,18 +526,23 @@ class ExecuteStrategy:
                                 logger.info(f"Attempting to cover short position for {symbol}")
                                 
                                 # PLACE ORDER
-                                # order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                                order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
                                 
-                                # if order_result.get('status') == 'SUCCESS':
-                                #     logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
-                                # else:
-                                #     logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
-                            
+                                if order_result.get('status') == 'SUCCESS':
+                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
+                                else:
+                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                
+                                # END OF PLACE ORDER
                             else:
                                 logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
                                 
                         except Exception as e:
                             logger.error(f"❌ Error covering short position: {str(e)}")
+                    else:
+                        logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                                  f"${price:.2f} | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
+                
                 logger.info(f"{'='*50}\n")
                 
                 # Add to closed positions and remove from active positions
@@ -591,8 +605,14 @@ class ExecuteStrategy:
                             logger.info(f"{symbol}: ${current_price:.2f} | Entry: ${entry_price:.2f} | ⏰ END OF DAY CLOSE")
                             
                             # PLACE ORDER
-                            # order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                            order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
 
+                            if order_result.get('status') == 'SUCCESS':
+                                logger.info(f"${symbol} | Order Successfully Placed | ⏰ END OF DAY CLOSE - sold at ${current_price:.2f} | Entry: ${entry_price:.2f}")
+                            else:
+                                logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                        
+                            # END OF PLACE ORDER
                         else:
                             logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
                     else:
