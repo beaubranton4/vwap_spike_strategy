@@ -1,6 +1,10 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
     - Run backtest to compare against today's/last week's results
+    - Orchestration is delayed, but seems to be working
+    - Premarket high issue: today's check starts at 7am ET.. shorted 2 stocks today that surpassed yesterday's high in premarket.
+    
+    
     - Update organization of "Data base" so that everything can be found in one place
 
             <!-- # Example organization structure
@@ -22,6 +26,7 @@
 
     - Ensure all criteria like buy time threshold are inputted for production runs
         - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS, ACCOUNT SIZE (in Screener)
+    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
     - Use pre market screener and run streamer with actual trades to see how it goes manually first.
 
 ------        

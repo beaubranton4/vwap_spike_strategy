@@ -75,7 +75,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     # print(f"Testing strategy on ticker: {tickers[0]}")
 
     # Get account balance using passed client
-    ACCOUNT_SIZE = get_cash_balance(client)/5
+    ACCOUNT_SIZE = get_cash_balance(client)/10
     
     go = 1
     stockies = {} #Create dataframes of stock data for iteration

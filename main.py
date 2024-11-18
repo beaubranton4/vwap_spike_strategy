@@ -81,7 +81,7 @@ def run_daily_screener():
     except Exception as e:
         logger.error(f"Daily screener failed: {str(e)}", exc_info=True)
 
-def run_premarket_screener():
+def schedule_premarket_screener():
     """Run 1 minute before market open"""
     try:
         if not is_market_open_today():
@@ -150,12 +150,14 @@ def main():
     
     def schedule_in_et(job_time, job_func):
         """Schedule a job using Eastern Time"""
-        current_time = datetime.now(et_tz)
-        schedule_time = datetime.strptime(job_time, "%H:%M").time()
-        et_time = et_tz.localize(
-            datetime.combine(current_time.date(), schedule_time)
-        ).strftime("%H:%M")
-        return scheduler.every().day.at(et_time).do(job_func)
+        def job_wrapper():
+            # Check if it's the right time in ET before executing
+            current_et_time = datetime.now(et_tz).strftime("%H:%M")
+            if current_et_time == job_time:
+                return job_func()
+        
+        # Schedule the wrapper to check every minute
+        return scheduler.every().minute.do(job_wrapper)
     
     # Schedule jobs using ET
     nyse = mcal.get_calendar('NYSE')
@@ -169,19 +171,23 @@ def main():
         premarket_time = "09:29"
         market_open_time = "09:30"
 
-    schedule_in_et("20:00", run_daily_screener)     # 8:00 PM ET 
-    schedule_in_et(premarket_time, run_premarket_screener)  # 1 min before market open
-    schedule_in_et(market_open_time, run_trading_strategy)  # At market open
     
-    logger.info("Trading bot initialized and scheduled:")
-    logger.info("- Daily Screener: 8:00 PM ET")
-    logger.info("- Pre-market Screener: 9:29 AM ET")
-    logger.info("- Trading Strategy: 9:30 AM ET")
+    print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
+    print(f'Scheduling jobs (all times ET):')
+    print(f'- Daily Screener: 20:00')
+    print(f'- Pre-market Screener: {premarket_time}')
+    print(f'- Trading Strategy: {market_open_time}')
     
-    # Log current time
+    schedule_in_et("20:00", run_daily_screener)
+    schedule_in_et(premarket_time, schedule_premarket_screener)
+    schedule_in_et(market_open_time, run_trading_strategy)
+    
+    logger.info("Trading bot initialized and scheduled (all times ET):")
+    logger.info("- Daily Screener: 20:00 ET")
+    logger.info(f"- Pre-market Screener: {premarket_time} ET")
+    logger.info(f"- Trading Strategy: {market_open_time} ET")
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     logger.info("Bot is running and waiting for scheduled tasks...")
-    
     while True:
         scheduler.run_pending()
         time_lib.sleep(1)
