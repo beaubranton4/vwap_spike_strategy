@@ -1,7 +1,6 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-    - Need to fix edge case for screener running friday night is for monday next week. 
-        if it falls on a friday, then the output should save with monday's date.
+    - Run backtest to compare against today's/last week's results
     - Update organization of "Data base" so that everything can be found in one place
 
             <!-- # Example organization structure
@@ -27,14 +26,7 @@
 
 ------        
         
-    - Tie all these pieces together with scheduler (Mage? or some other scheduler)
-        - Schedule screener to run at 5 pm PT every day and save file. (to DB?)
-        - pre market screener to run at 30-60 seconds before market open and save another file. (to DB?)
-        - Schedule streamer to run from Market Open to 4pm PT every day 
-
-            <!-- - If you want to start the streamer automatically when the market opens then instead of `streamer.start()` use the call `streamer.start_auto(receiver=print, start_time=datetime.time(9, 29, 0), stop_time=datetime.time(16, 0, 0), on_days=(0,1,2,3,4), now_timezone=zoneinfo.ZoneInfo("America/New_York"), daemon=True)`, shown are the default values which will start & stop the streamer during normal market hours (9:30am-4:00pm). If you want to start and/or stop the streamer at specific times then set the `start_time` and `stop_time` parameters to `datetime.time(HH,MM,SS)`, times are in EST ("America/New_York"); You can also change the days when the streamer starts by the `on_days` parameter, the default (Mon-Fri) is `on_days=(0,1,2,3,4)`. Starting the stream automatically will preserve the previous subscriptions. If you want to use a custom timezone for now then set the `now_timezone` parameter to `zoneinfo.ZoneInfo(...)`. -->
-    
-    - Run on VM so it continuously runs (find out best way to deploy trading bot)
+    - Try to get interest rates and hard to borrow data prior to placing trades
 
 
 
