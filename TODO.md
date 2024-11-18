@@ -1,6 +1,26 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-mmove money
+    - Need to fix edge case for screener running friday night is for monday next week. 
+        if it falls on a friday, then the output should save with monday's date.
+    - Update organization of "Data base" so that everything can be found in one place
+
+            <!-- # Example organization structure
+            project_root/
+                └── data/
+                    └── YYYY-MM-DD/           # Daily folders
+                        ├── daily_screen.xlsx
+                        ├── premarket.xlsx
+                        ├── trades.xlsx
+                        └── results.txt
+
+            # Example code to create and use this structure
+            def save_daily_files(data, date):
+                folder_path = f"data/{date.strftime('%Y-%m-%d')}"
+                os.makedirs(folder_path, exist_ok=True)
+                
+                # Save files
+                data.to_excel(f"{folder_path}/daily_screen.xlsx") -->
+
     - Ensure all criteria like buy time threshold are inputted for production runs
         - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS, ACCOUNT SIZE (in Screener)
     - Use pre market screener and run streamer with actual trades to see how it goes manually first.

@@ -261,7 +261,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     stocks_to_trade['Shares Float'] = (stocks_to_trade['Float'].astype(float)/1000000).astype(str) + 'M'
     stocks_to_trade.sort_values(by = 'Market Capitalization',ascending = True,inplace = True)
     
-    output_file_path = 'screener/daily_screener_signals/' + str(day_of_backtest.date() + timedelta(days=1)) + '.csv'
+    output_date = next_business_day(day_of_backtest.date())
+    output_file_path = 'screener/daily_screener_signals/' + str(output_date) + '.csv'
     stocks_to_trade.to_csv(output_file_path, index=True, header=True)
 
     print(datetime.now() - start_clock)
