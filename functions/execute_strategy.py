@@ -433,17 +433,17 @@ class ExecuteStrategy:
                 if not self.use_mock_data:
                     try:
                         #REAL STREAM BUT FAKE ORDER 
-                        # logger.info(f"✅ JUST TESTING: Order successfully placed and confirmed")
-                        # self.active_short_positions[symbol] = price  # Store entry price for testing real streamer but not actually placing order
+                        logger.info(f"✅ JUST TESTING: Order successfully placed and confirmed")
+                        self.active_short_positions[symbol] = price  # Store entry price for testing real streamer but not actually placing order
                         
                         #PLACE ORDER
-                        order_result = place_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
+                        # order_result = place_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
                         
-                        if order_result.get('status') == 'SUCCESS':
-                            logger.info(f"✅ Order successfully placed and confirmed")
-                            self.active_short_positions[symbol] = price  # Store entry price
-                        else:
-                            logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
+                        # if order_result.get('status') == 'SUCCESS':
+                        #     logger.info(f"✅ Order successfully placed and confirmed")
+                        #     self.active_short_positions[symbol] = price  # Store entry price
+                        # else:
+                        #     logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
                         
                         # END OF PLACE ORDER
 
@@ -498,12 +498,12 @@ class ExecuteStrategy:
                                 logger.info(f"Attempting to cover short position for {symbol}")
                                 
                                 # PLACE ORDER
-                                order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
+                                # order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
                                 
-                                if order_result.get('status') == 'SUCCESS':
-                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
-                                else:
-                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                # if order_result.get('status') == 'SUCCESS':
+                                #     logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
+                                # else:
+                                #     logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
                                 
                                 # END OF PLACE ORDER
                             else:
@@ -526,12 +526,12 @@ class ExecuteStrategy:
                                 logger.info(f"Attempting to cover short position for {symbol}")
                                 
                                 # PLACE ORDER
-                                order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                                # order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
                                 
-                                if order_result.get('status') == 'SUCCESS':
-                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
-                                else:
-                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                # if order_result.get('status') == 'SUCCESS':
+                                #     logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
+                                # else:
+                                #     logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
                                 
                                 # END OF PLACE ORDER
                             else:
@@ -605,12 +605,12 @@ class ExecuteStrategy:
                             logger.info(f"{symbol}: ${current_price:.2f} | Entry: ${entry_price:.2f} | ⏰ END OF DAY CLOSE")
                             
                             # PLACE ORDER
-                            order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                            # order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
 
-                            if order_result.get('status') == 'SUCCESS':
-                                logger.info(f"${symbol} | Order Successfully Placed | ⏰ END OF DAY CLOSE - sold at ${current_price:.2f} | Entry: ${entry_price:.2f}")
-                            else:
-                                logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                            # if order_result.get('status') == 'SUCCESS':
+                            #     logger.info(f"${symbol} | Order Successfully Placed | ⏰ END OF DAY CLOSE - sold at ${current_price:.2f} | Entry: ${entry_price:.2f}")
+                            # else:
+                            #     logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
                         
                             # END OF PLACE ORDER
                         else:

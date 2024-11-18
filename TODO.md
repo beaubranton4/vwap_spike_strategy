@@ -1,6 +1,6 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-
+mmove money
     - Ensure all criteria like buy time threshold are inputted for production runs
         - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS, ACCOUNT SIZE (in Screener)
     - Use pre market screener and run streamer with actual trades to see how it goes manually first.
