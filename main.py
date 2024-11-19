@@ -8,6 +8,11 @@ import pandas as pd
 import pandas_market_calendars as mcal
 from functions import *  # Import your existing functions
 from config import *
+import threading  # Add this import
+import os
+import subprocess
+import psutil
+import sys
 
 # Setup logging
 def setup_logging():
@@ -27,6 +32,9 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 logger = setup_logging()
+
+# Create a lock instance
+job_lock = threading.Lock()
 
 def is_market_open_today():
     """Check if market is open today"""
@@ -125,7 +133,7 @@ def run_trading_strategy():
         logger.info("Starting trading strategy...")
         
         # Load today's filtered results
-        save_dir = Path('screener/premarket_screener_signals')
+        save_dir = Path('screener/daily_screener_signals')
         today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
         
         filtered_file = f'{save_dir}/{today}.csv'
@@ -145,8 +153,33 @@ def run_trading_strategy():
 def print_test_message():
     logger.info("Test message: Bot is still running!")
 
+def setup_power_management():
+    """Configure power management settings for Mac"""
+    try:
+        # Instead of using pmset directly, create a caffeinate process
+        subprocess.Popen(['caffeinate', '-i'])  # Prevent idle sleep
+        
+        logger.info("Power management settings configured using caffeinate")
+    except Exception as e:
+        logger.error(f"Failed to configure power settings: {e}")
+
+def reduce_brightness():
+    try:
+        subprocess.run(['brightness', '0.3'])  # Set to 30%
+    except Exception:
+        pass  # Brightness control might not be available
+
+def print_resource_usage():
+    cpu_percent = psutil.cpu_percent()
+    memory_percent = psutil.virtual_memory().percent
+    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+
 def main():
     et_tz = pytz.timezone('US/Eastern')
+    
+    # Setup power management only if on Mac
+    if sys.platform == 'darwin':  # More specific check for Mac
+        setup_power_management()
     
     def schedule_in_et(job_time, job_func):
         """Schedule a job using Eastern Time"""
@@ -154,43 +187,53 @@ def main():
             # Check if it's the right time in ET before executing
             current_et_time = datetime.now(et_tz).strftime("%H:%M")
             if current_et_time == job_time:
-                return job_func()
-        
-        # Schedule the wrapper to check every minute
-        return scheduler.every().minute.do(job_wrapper)
+                logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
+                with job_lock:  # Acquire the lock before executing the job
+                    logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
+                    result = job_func()
+                    logger.info(f"Completed {job_func.__name__}")
+                # Lock is released automatically when exiting the with block
+
+        # Check every minute
+        return scheduler.every(5).seconds.do(job_wrapper)
     
     # Schedule jobs using ET
-    nyse = mcal.get_calendar('NYSE')
-    schedule = pd.DataFrame(nyse.schedule(start_date=datetime.now().date(), end_date=datetime.now().date()))
-    if len(schedule) > 0:
-        market_open = schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-        premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M")
-        market_open_time = market_open.strftime("%H:%M")
-    else:
-        # Default to 9:30 AM ET if no schedule found
-        premarket_time = "09:29"
-        market_open_time = "09:30"
-
+    # nyse = mcal.get_calendar('NYSE')
+    # schedule = pd.DataFrame(nyse.schedule(start_date=datetime.now().date(), end_date=datetime.now().date()))
+    # if len(schedule) > 0:
+    #     market_open = schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+    #     premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M")
+    #     market_open_time = market_open.strftime("%H:%M")
+    # else:
+    #     # Default to 9:30 AM ET if no schedule found
+    #     premarket_time = "09:29"
+    #     market_open_time = "09:30"
+    
+    screener_time = "20:00"
+    # premarket_time = "23:02"
+    market_open_time = "23:41"
     
     print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
     print(f'Scheduling jobs (all times ET):')
-    print(f'- Daily Screener: 20:00')
-    print(f'- Pre-market Screener: {premarket_time}')
+    print(f'- Daily Screener: {screener_time}')
+    # print(f'- Pre-market Screener: {premarket_time}')
     print(f'- Trading Strategy: {market_open_time}')
     
-    schedule_in_et("20:00", run_daily_screener)
-    schedule_in_et(premarket_time, schedule_premarket_screener)
+    schedule_in_et(screener_time, run_daily_screener)
+    # schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
     logger.info("- Daily Screener: 20:00 ET")
-    logger.info(f"- Pre-market Screener: {premarket_time} ET")
+    # logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     logger.info("Bot is running and waiting for scheduled tasks...")
     while True:
         scheduler.run_pending()
-        time_lib.sleep(1)
+        if datetime.now().minute == 0:  # Log every hour
+            print_resource_usage()
+        time_lib.sleep(0.1)
 
 if __name__ == "__main__":
     main() 

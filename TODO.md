@@ -1,7 +1,9 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-    - Run backtest to compare against today's/last week's results
     - Orchestration is delayed, but seems to be working
+    - Still running into auth issues and have to manually re-authenticate
+        - may just need to use schwabdev in backtest and it will work.
+        - I should update the backtest to only use current strategy so it runs faster.
     - Premarket high issue: today's check starts at 7am ET.. shorted 2 stocks today that surpassed yesterday's high in premarket.
     
     
@@ -24,35 +26,20 @@
                 # Save files
                 data.to_excel(f"{folder_path}/daily_screen.xlsx") -->
 
-    - Ensure all criteria like buy time threshold are inputted for production runs
-        - BUY TIME THRESHOLD, STRATEGY END TIME, MARKET CLOSE TIME, MANUAL ORDER PLACEMENTS, ACCOUNT SIZE (in Screener)
     - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
-    - Use pre market screener and run streamer with actual trades to see how it goes manually first.
+    
 
 ------        
         
     - Try to get interest rates and hard to borrow data prior to placing trades
-
-
-
+        - Keep note of which stocks we can't borrow. 
+            - ADD (50M float and 12M market cap)
     - Add trade history log with profit / loss etc. Join with the screener output (Ensure it matches with backtest)
-    Work on Order functions and integrate:
-    - Create buy (short) function that takes in (ticker, buy price, time threshold to buy)
-        - Make sure to check if the stock is eligible to be shorted
-        - Make sure to check stock has not already been shorted
-        - Market vs limit order
-    - Must create sell function that takes in (bought price, sell price, time threshold to sell)
-        - Ensure stock has been shorted first
-        - Sell at stop
-        - Sell at take
-        - Sell at time threshold
-    - Test with very small amounts first (divide account size by 100 and try rerunning screener).
-    - Ensure failsafes so i don't lose all my money while testing.
-    - How do we ensure this strategy runs every day without touching it?
 
 
 - OTHER TO-DO's
-    
+    - Async functions and using another streamer for account positions.
+    - Utilize schwabdev streaming functions for more concise code and simplicity.
     - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
                 POSITION
                 ENTRY_TIME

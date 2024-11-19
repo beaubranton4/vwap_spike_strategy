@@ -26,7 +26,7 @@ def main():
     #     client=client,
     #     ticker_list=ticker_list,
     #     combinations=combinations,
-    #     day_of_backtest=datetime.now() - timedelta(days=2),
+    #     day_of_backtest=datetime.now(),
     #     period_type=period_type,
     #     period=period,
     #     frequency_type=frequency_type,
@@ -51,7 +51,7 @@ def main():
     # Allow for custom date selection
     # tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     # today = datetime.now().strftime('%Y-%m-%d')
-    selected_date = '2024-11-18'  # Can be modified to any date in YYYY-MM-DD format
+    selected_date = '2024-11-19'  # Can be modified to any date in YYYY-MM-DD format
     screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
     # print(f"Found {len(screener_results)} potential trades after daily screener")
 
@@ -60,9 +60,9 @@ def main():
     # print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
-    premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
-    strategy = ExecuteStrategy(use_mock_data=False)
-    strategy.execute_vwap_spike_strategy(premarket_screener_results)
+    # premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
+    strategy = ExecuteStrategy(use_mock_data=True)
+    strategy.execute_vwap_spike_strategy(screener_results)
     
     
 if __name__ == "__main__":

@@ -322,10 +322,18 @@ def run_premarket_screener(client, symbols_df):
                 symbols_to_remove.append(symbol)
                 continue
             
+            # Print the received premarket prices
+            print(f"Premarket prices for {symbol}:")
+            for candle in response['candles']:
+                premarket_time = pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern')
+                premarket_high = candle['high']
+                print(f"Time: {premarket_time}, High: {premarket_high}")
+
             # Filter for premarket candles only
             premarket_highs = [
                 candle['high'] for candle in response['candles']
                 if (pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern').date() == today and
+                    pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern') >= pd.Timestamp('04:00:00').tz_localize('US/Eastern') and
                     pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern') < market_open)
             ]
             
@@ -347,7 +355,7 @@ def run_premarket_screener(client, symbols_df):
     
     # Remove the identified symbols from the DataFrame
     filtered_df = filtered_df[~filtered_df['Ticker'].isin(symbols_to_remove)]
-    #I would like to save the filtered_df to a csv file
+    # Save the filtered DataFrame to a CSV file
     filtered_df.to_csv('screener/premarket_screener_signals/' + str(datetime.now().date()) + '.csv', index=False)
     # Print removed and remaining symbols
     print("Removed symbols:", symbols_to_remove)
