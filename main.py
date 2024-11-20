@@ -19,17 +19,57 @@ def setup_logging():
     log_dir = Path('logs')
     log_dir.mkdir(exist_ok=True)
     
-    log_file = log_dir / f'trading_bot_{datetime.now().strftime("%Y%m%d")}.log'
+    # Create log filename with timestamp
+    log_file = log_dir / f'trading_bot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
     
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-    return logging.getLogger(__name__)
+    # Create a formatter
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    
+    # Create file handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    console_handler.setLevel(logging.INFO)
+    
+    # Get the root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
+    # Remove any existing handlers
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # Add our handlers
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    # Capture stdout and stderr
+    class StreamToLogger:
+        def __init__(self, logger, level):
+            self.logger = logger
+            self.level = level
+            self.linebuf = ''
+
+        def write(self, buf):
+            for line in buf.rstrip().splitlines():
+                if line:  # Only log non-empty lines
+                    self.logger.log(self.level, line.rstrip())
+        
+        def flush(self):
+            pass
+
+    # Replace stdout and stderr with logging
+    sys.stdout = StreamToLogger(root_logger, logging.INFO)
+    sys.stderr = StreamToLogger(root_logger, logging.ERROR)
+    
+    # Test the logging
+    root_logger.info("Logging system initialized")
+    
+    return root_logger
 
 logger = setup_logging()
 
@@ -186,7 +226,10 @@ def main():
         def job_wrapper():
             # Check if it's the right time in ET before executing
             current_et_time = datetime.now(et_tz).strftime("%H:%M")
-            if current_et_time == job_time:
+            current_et_seconds = datetime.now(et_tz).second
+            
+            # Only execute if time matches AND we're in the first 5 seconds of the minute
+            if current_et_time == job_time and current_et_seconds < 5:
                 logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
                 with job_lock:  # Acquire the lock before executing the job
                     logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
@@ -194,7 +237,7 @@ def main():
                     logger.info(f"Completed {job_func.__name__}")
                 # Lock is released automatically when exiting the with block
 
-        # Check every minute
+        # Check every 5 seconds
         return scheduler.every(5).seconds.do(job_wrapper)
     
     # Schedule jobs using ET
@@ -210,8 +253,10 @@ def main():
     #     market_open_time = "09:30"
     
     screener_time = "20:00"
-    # premarket_time = "23:02"
-    market_open_time = "23:41"
+
+    #FOR TESTING
+    premarket_time = "09:49"
+    market_open_time = "04:00"
     
     print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
     print(f'Scheduling jobs (all times ET):')
@@ -233,6 +278,7 @@ def main():
         scheduler.run_pending()
         if datetime.now().minute == 0:  # Log every hour
             print_resource_usage()
+        sys.stdout.flush()  # Force flush the output
         time_lib.sleep(0.1)
 
 if __name__ == "__main__":

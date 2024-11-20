@@ -282,12 +282,12 @@ def run_premarket_screener(client, symbols_df):
     
     # Get today's date and market open time in Eastern Time
     eastern_tz = pytz.timezone('US/Eastern')
-    today = datetime.now(eastern_tz).date()
+    today = datetime.now(eastern_tz).date() 
     
     # Convert today's date to timestamp for API
-    today_start = int(pd.Timestamp(today).timestamp() * 1000)
-    today_end = int((pd.Timestamp(today) + pd.Timedelta(days=1)).timestamp() * 1000)
-    
+    today_start = int(pd.Timestamp(today - timedelta(days=1)).replace(hour=0, minute=0, second=0).timestamp() * 1000)
+    today_end = int(pd.Timestamp(today).replace(hour=23, minute=59, second=59).timestamp() * 1000)
+
     # Get market open time
     market_schedule = pd.DataFrame(mcal.get_calendar('NYSE').schedule(start_date=today, end_date=today))
     market_open = market_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
@@ -298,54 +298,48 @@ def run_premarket_screener(client, symbols_df):
     # Prepare symbols to check
     symbols_to_check = filtered_df[['Ticker', 'Yesterday High']].dropna().values.tolist()
 
-    # Get price history for all symbols
-    responses = {
-        symbol: get_price_history_with_schwabdev(
-            client=client,
-            ticker=symbol,
-            period_type='day',
-            period=1,
-            frequency_type='minute',
-            frequency=5,
-            need_extended_hours_data=True,
-            need_previous_close=True,
-            start_time=today_start,
-            end_time=today_end
-        ) for symbol, _ in symbols_to_check
-    }
-
     for symbol, yesterday_high in symbols_to_check:
         try:
-            response = responses[symbol]
+            response = get_price_history_with_schwabdev(
+                client=client,
+                ticker=symbol,
+                period_type='day',
+                period=2,
+                frequency_type='minute',
+                frequency=5,
+                need_extended_hours_data=True,
+                need_previous_close=True,
+                start_time=today_start,
+                end_time=today_end
+            )
 
             if response is None or not response.get('candles'):
                 symbols_to_remove.append(symbol)
                 continue
             
-            # Print the received premarket prices
+            # Filter for premarket candles only
+            premarket_highs = []
             print(f"Premarket prices for {symbol}:")
             for candle in response['candles']:
-                premarket_time = pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern')
-                premarket_high = candle['high']
-                print(f"Time: {premarket_time}, High: {premarket_high}")
-
-            # Filter for premarket candles only
-            premarket_highs = [
-                candle['high'] for candle in response['candles']
-                if (pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern').date() == today and
-                    pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern') >= pd.Timestamp('04:00:00').tz_localize('US/Eastern') and
-                    pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern') < market_open)
-            ]
+                candle_time = pd.to_datetime(candle['datetime'], unit='ms').tz_localize('UTC').tz_convert('US/Eastern')
+                
+                # Check if it's before market open on the current day
+                if candle_time < market_open and candle_time.date() == today:
+                    premarket_highs.append(candle['high'])
+                    print(f"Time: {candle_time}, High: {candle['high']}")
             
             if not premarket_highs:
+                print(f"No premarket data found for {symbol}")
                 symbols_to_remove.append(symbol)
                 continue
                 
             # Calculate premarket high
-            premarket_high = max(premarket_highs)
+            premarket_high = max(premarket_highs)  # Get the maximum high value
+            print(f"{symbol} - Premarket high: {premarket_high}, Yesterday high: {yesterday_high}")
             
             # Remove symbols where premarket high exceeds yesterday's high
             if premarket_high > yesterday_high:
+                print(f"Removing {symbol}: premarket high ({premarket_high}) > yesterday high ({yesterday_high})")
                 symbols_to_remove.append(symbol)
             
         except Exception as e:
@@ -360,5 +354,4 @@ def run_premarket_screener(client, symbols_df):
     # Print removed and remaining symbols
     print("Removed symbols:", symbols_to_remove)
     print("Remaining symbols:", filtered_df['Ticker'].tolist())
-    
     return filtered_df

@@ -1,13 +1,37 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-    - Orchestration is delayed, but seems to be working
-    - Still running into auth issues and have to manually re-authenticate
-        - may just need to use schwabdev in backtest and it will work.
-        - I should update the backtest to only use current strategy so it runs faster.
-    - Premarket high issue: today's check starts at 7am ET.. shorted 2 stocks today that surpassed yesterday's high in premarket.
+    - Connect to papermoney account
+    - figure out cannot call recv while another coroutine is happening. seems to happen when the streamer is running but nothing to check. No stocks shorted and past buy time threshold.
+    - Add trade history log with profit / loss from actual trades
+        - If stock failed to short it should not get added to the trade history log.
+    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
+    - Automate script so that it runs 24/7
     
+
+------        
+        
+    - Try to get interest rates and hard to borrow data prior to placing trades
+        - Keep note of which stocks we can't borrow. 
+            - ADD (50M float and 12M market cap)
+
+
+- OTHER TO-DO's
+    - Update backtest to only use current strategy and use schwabdev API for prices
+        - also fix so that we don't incorporate current day's data in backtest (current day data is not complete with full pre-market data)
+    - Async functions and using another streamer for account positions.
+    - Utilize schwabdev streaming functions for more concise code and simplicity.
+    - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
+                POSITION
+                ENTRY_TIME
+                ACCOUNT_SIZE
+                BUYS
+                RESULT_INDEXER
+                BOUGHT_TODAY
+                results dataframe
+    - Check if there's a way to see the cost of shorting a stock before making a trade call
+    - Tune limit and market orders
+    - Update organization of "Data base" so that everything can be found in one place. Logs and outputs and files etc.
     
-    - Update organization of "Data base" so that everything can be found in one place
 
             <!-- # Example organization structure
             project_root/
@@ -25,33 +49,6 @@
                 
                 # Save files
                 data.to_excel(f"{folder_path}/daily_screen.xlsx") -->
-
-    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
-    
-
-------        
-        
-    - Try to get interest rates and hard to borrow data prior to placing trades
-        - Keep note of which stocks we can't borrow. 
-            - ADD (50M float and 12M market cap)
-    - Add trade history log with profit / loss etc. Join with the screener output (Ensure it matches with backtest)
-
-
-- OTHER TO-DO's
-    - Async functions and using another streamer for account positions.
-    - Utilize schwabdev streaming functions for more concise code and simplicity.
-    - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
-                POSITION
-                ENTRY_TIME
-                ACCOUNT_SIZE
-                BUYS
-                RESULT_INDEXER
-                BOUGHT_TODAY
-                results dataframe
-    - Check if there's a way to see the cost of shorting a stock before making a trade call
-    - Tune limit and market orders
-    - Add better error handling
-    - Use Schwabdev API for all functions in backtest and screener .ipynb
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz
     - See if there's a way we can filter out stocks hard to borrow or have high interest rates (based on float and market cap?)
     - Maybe i can keep my own DB of historical data for stocks and use that to run my screener?

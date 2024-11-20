@@ -394,7 +394,6 @@ class ExecuteStrategy:
                               current_time: datetime) -> None:
         """Check if new short position should be opened"""
         try:
-            
             if price < symbol_data['Target Entry']:
                 logger.info(f"\n{'='*50}")
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
@@ -429,7 +428,8 @@ class ExecuteStrategy:
                 logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                           f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
                 logger.info(f"Order Details: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}")
-                
+
+                order_success = False
                 if not self.use_mock_data:
                     try:
                         #REAL STREAM BUT FAKE ORDER 
@@ -442,6 +442,7 @@ class ExecuteStrategy:
                         if order_result.get('status') == 'SUCCESS':
                             logger.info(f"✅ Order successfully placed and confirmed")
                             self.active_short_positions[symbol] = price  # Store entry price
+                            order_success = True
                         else:
                             logger.error(f"❌ Order placement failed: {order_result.get('message', 'Unknown error')}")
                         
@@ -452,23 +453,25 @@ class ExecuteStrategy:
                 else:
                     logger.info(f"✅ Mock data mode: Order would have been placed")
                     self.active_short_positions[symbol] = price  # Store entry price
+                    order_success = True
 
-                # Track the signal
-                new_event = pd.DataFrame([{
-                    'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'symbol': symbol,
-                    'price': price,
-                    'quantity': quantity,
-                    'order_value': order_value,
-                    'event_type': 'SHORT_SIGNAL',
-                    'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f} | " +
-                              f"Order: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}"
-                }])
-                self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
-                
-                logger.info(f"{'='*50}\n")
-                
-                sleep(0.1)  # Small delay to prevent overwhelming the system
+                # Only track the signal if order was successful or using mock data
+                if order_success:
+                    new_event = pd.DataFrame([{
+                        'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'symbol': symbol,
+                        'price': price,
+                        'quantity': quantity,
+                        'order_value': order_value,
+                        'event_type': 'SHORT_SIGNAL',
+                        'details': f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f} | " +
+                                  f"Order: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}"
+                    }])
+                    self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                    
+                    logger.info(f"{'='*50}\n")
+                    
+                    sleep(0.1)  # Small delay to prevent overwhelming the system
                     
         except Exception as e:
             logger.error(f"Error in entry conditions for {symbol}: {e}")
@@ -478,42 +481,64 @@ class ExecuteStrategy:
                              current_time: datetime) -> None:
         """Check if position should be closed based on price targets"""
         if symbol in self.active_short_positions and symbol not in self.closed_positions:
+            # First verify the position actually exists
+            quantity = int(symbol_data['Shares'])
+            if not self.use_mock_data:
+                try:
+                    if not check_position_match(self.client, symbol, quantity, short=True):
+                        logger.warning(f"\n{'='*50}")
+                        logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
+                        logger.warning("Removing from active positions and trading history")
+                        logger.warning(f"{'='*50}\n")
+                        
+                        # Remove from active positions and add to closed
+                        del self.active_short_positions[symbol]
+                        self.closed_positions.add(symbol)
+                        
+                        # Remove any entries from trading events
+                        self.trading_events = self.trading_events[
+                            ~(self.trading_events['symbol'] == symbol)
+                        ]
+                        return
+                except Exception as e:
+                    logger.error(f"Error checking position match for {symbol}: {str(e)}")
+                    return
+            
             entry_price = self.active_short_positions[symbol]
             
             # Calculate stop and target prices based on entry price
             stop_price = entry_price * (1 + STOP[0])  # Add percentage for stop loss (going up)
             target_price = entry_price * (1 - TARGET[0])  # Subtract percentage for profit target (going down)
-            quantity = int(symbol_data['Shares'])  # Get quantity from dataframe
 
             if price >= stop_price or price <= target_price:
                 logger.info(f"\n{'='*50}")
+                order_success = False
+                
                 if price >= stop_price:
                     limit_price = max(stop_price, price)
                     order_value = limit_price * quantity
                     
                     if not self.use_mock_data:
                         try:
-                            # Verify position exists before attempting to cover
-                            if check_position_match(self.client, symbol, quantity, short=True):
-                                logger.info(f"Attempting to cover short position for {symbol}")
-                                
-                                # PLACE ORDER
-                                order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
-                                
-                                if order_result.get('status') == 'SUCCESS':
-                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
-                                else:
-                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
-                                
-                                # END OF PLACE ORDER
+                            logger.info(f"Attempting to cover short position for {symbol}")
+                            
+                            # PLACE ORDER
+                            order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)
+                            
+                            if order_result.get('status') == 'SUCCESS':
+                                logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
+                                order_success = True
                             else:
-                                logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
-                                
+                                logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                return
+                            # END OF PLACE ORDER
                         except Exception as e:
                             logger.error(f"❌ Error covering short position: {str(e)}")
+                            return
                     else:
                         logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                                   f"${price:.2f} | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f}")
+                        order_success = True
                 else:
                     limit_price = max(target_price, price)
                     order_value = limit_price * quantity
@@ -521,49 +546,45 @@ class ExecuteStrategy:
                               f"${price:.2f} | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
                     if not self.use_mock_data:
                         try:
-                            # Verify position exists before attempting to cover
-                            if check_position_match(self.client, symbol, quantity, short=True):
-                                logger.info(f"Attempting to cover short position for {symbol}")
-                                
-                                # PLACE ORDER
-                                order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
-                                
-                                if order_result.get('status') == 'SUCCESS':
-                                    logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
-                                else:
-                                    logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
-                                
-                                # END OF PLACE ORDER
+                            logger.info(f"Attempting to cover short position for {symbol}")
+                            
+                            # PLACE ORDER
+                            order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                            
+                            if order_result.get('status') == 'SUCCESS':
+                                logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
+                                order_success = True
                             else:
-                                logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
-                                
+                                logger.error(f"❌ Failed to cover short position: {order_result.get('message', 'Unknown error')}")
+                                return
+                            # END OF PLACE ORDER
                         except Exception as e:
                             logger.error(f"❌ Error covering short position: {str(e)}")
+                            return
                     else:
                         logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                                   f"${price:.2f} | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f}")
+                        order_success = True
                 
                 logger.info(f"{'='*50}\n")
                 
-                # Add to closed positions and remove from active positions
-                self.closed_positions.add(symbol)
-                del self.active_short_positions[symbol] 
-                
-                # Track the exit
-                new_event = pd.DataFrame([{
-                    'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    'symbol': symbol,
-                    'price': price,
-                    'quantity': -quantity,
-                    'order_value': -order_value,
-                    'event_type': 'COVER_SHORT',
-                    'details': f"{'Stop loss' if price >= stop_price else 'Profit target'} hit | " +
-                              f"Entry: ${entry_price:.2f} | Stop: ${stop_price:.2f} | Target: ${target_price:.2f}"
-                }])
-                self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
-            else:
-                logger.info(f"NO SIGNAL - {symbol} is already shorted. Price: ${price:.2f} | Stop: ${stop_price:.2f} | Target: ${target_price:.2f}")
-
+                # Only add to trading events if order was successful or using mock data
+                if order_success:
+                    new_event = pd.DataFrame([{
+                        'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'symbol': symbol,
+                        'price': price,
+                        'quantity': -quantity,
+                        'order_value': -order_value,
+                        'event_type': 'COVER_SHORT',
+                        'details': f"{'Stop loss' if price >= stop_price else 'Profit target'} hit | " +
+                                  f"Entry: ${entry_price:.2f} | Stop: ${stop_price:.2f} | Target: ${target_price:.2f}"
+                    }])
+                    self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                    
+                    # Add to closed positions and remove from active positions
+                    self.closed_positions.add(symbol)
+                    del self.active_short_positions[symbol]
 
     def print_status_update(self) -> None:
         """Print periodic performance statistics"""
@@ -699,6 +720,7 @@ class ExecuteStrategy:
                         ",".join(symbols), 
                         ExecuteStrategyConfig.L1_FIELDS
                     ))
+                    self.is_running = True
                     logger.info("Stream connection established successfully")
                     break
                 except Exception as e:
@@ -815,7 +837,9 @@ class ExecuteStrategy:
         
         logger.info("\n" + "="*50)
         logger.info("Starting pre-market tracking...")
-        logger.info(f"Initial symbols: {len(self.df)}")
+        logger.info(f"Initial symbols ({len(self.df)}):")
+        for symbol in self.df['Ticker'].unique():
+            logger.info(f"- {symbol}: Yesterday High ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
         logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
         logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
         logger.info("="*50 + "\n")
@@ -845,7 +869,9 @@ class ExecuteStrategy:
                         logger.error(f"Error processing pre-market message: {e}")
                 
                 current_time = self.get_current_time()
-                if (current_time - last_status_time.astimezone(self.et_timezone)).seconds >= 3600:  # 1 hour
+                
+                # Print status update every hour
+                if (current_time - last_status_time.astimezone(self.et_timezone)).seconds >= 3600:
                     self.print_premarket_status(current_time)
                     last_status_time = current_time
                 
@@ -905,10 +931,11 @@ class ExecuteStrategy:
                                     # Update premarket high if current price is higher
                                     if current_price > self.premarket_highs[symbol]:
                                         self.premarket_highs[symbol] = current_price
-                                        logger.info(f"{simulated_time} | {symbol} New high: ${current_price:.2f} | Yesterday High: ${yesterday_high:.2f}")
                                     
+                                    
+                                    # Check if premarket high breaches yesterday's high
                                     if self.premarket_highs[symbol] > yesterday_high:
-                                        # Track removal event
+                                                                                # Track removal event
                                         new_event = pd.DataFrame([{
                                             'timestamp': simulated_time,
                                             'symbol': symbol,
@@ -917,8 +944,14 @@ class ExecuteStrategy:
                                             'details': f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
                                         }])
                                         self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                                        
+                                        # Log the removal with detailed information
+                                        logger.info("\n" + "-"*70)
+                                        logger.info("\n" + "-"*70 + f"\n🚫 REMOVING {symbol}\nCurrent Price: ${current_price:.2f}\nPremarket High: ${self.premarket_highs[symbol]:.2f}\nYesterday High: ${yesterday_high:.2f}\nRemaining Symbols: {len(self.df['Ticker'].unique()) - len(self.symbols_to_remove) - 1}\n" + "-"*70 + "\n")
+                                        logger.info("-"*70 + "\n")
+                                        
                                         self.symbols_to_remove.add(symbol)
-                                        logger.info(f"{simulated_time} | {symbol} REMOVED - Breached yesterday's high")
+
         except Exception as e:
             logger.error(f"Error processing pre-market message: {str(e)}")
             logger.error(f"Message content: {message}")
@@ -936,13 +969,26 @@ class ExecuteStrategy:
         logger.info("="*50 + "\n")
 
     def print_premarket_summary(self) -> None:
-        """Print final pre-market summary"""
+        """Print final pre-market summary with detailed information"""
+        logger.info("\n" + "="*70)
+        logger.info("PREMARKET TRACKING COMPLETED")
+        logger.info("="*70)
+        
         if self.symbols_to_remove:
-            logger.info("\n" + "="*50)
-            logger.info("Pre-market tracking completed")
-            logger.info(f"Removed {len(self.symbols_to_remove)} symbols that exceeded yesterday's high:")
+            logger.info("\n🚫 REMOVED SYMBOLS:")
             for symbol in sorted(self.symbols_to_remove):
-                logger.info(f"- {symbol}: Pre-market high ${self.premarket_highs[symbol]:.2f} > Yesterday high ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
-            logger.info(f"Symbols remaining: {len(self.df)} → {len(self.df) - len(self.symbols_to_remove)}")
-            logger.info("="*50 + "\n")
+                yesterday_high = self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]
+                logger.info(f"- {symbol:<6} | Premarket High: ${self.premarket_highs[symbol]:.2f} | Yesterday High: ${yesterday_high:.2f}")
+        
+        remaining_symbols = set(self.df['Ticker']) - self.symbols_to_remove
+        if remaining_symbols:
+            logger.info("\n✅ REMAINING SYMBOLS:")
+            for symbol in sorted(remaining_symbols):
+                yesterday_high = self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]
+                current_high = self.premarket_highs.get(symbol, 0)
+                logger.info(f"- {symbol:<6} | Current High: ${current_high:.2f} | Yesterday High: ${yesterday_high:.2f}")
+        
+        logger.info("\n" + "="*70)
+        logger.info(f"Final Count - Removed: {len(self.symbols_to_remove)} | Remaining: {len(remaining_symbols)}")
+        logger.info("="*70 + "\n")
 
