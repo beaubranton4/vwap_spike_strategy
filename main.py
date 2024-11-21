@@ -173,7 +173,7 @@ def run_trading_strategy():
         logger.info("Starting trading strategy...")
         
         # Load today's filtered results
-        save_dir = Path('screener/daily_screener_signals')
+        save_dir = Path('screener/premarket_screener_signals')
         today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
         
         filtered_file = f'{save_dir}/{today}.csv'
@@ -241,36 +241,36 @@ def main():
         return scheduler.every(5).seconds.do(job_wrapper)
     
     # Schedule jobs using ET
-    # nyse = mcal.get_calendar('NYSE')
-    # schedule = pd.DataFrame(nyse.schedule(start_date=datetime.now().date(), end_date=datetime.now().date()))
-    # if len(schedule) > 0:
-    #     market_open = schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-    #     premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M")
-    #     market_open_time = market_open.strftime("%H:%M")
-    # else:
-    #     # Default to 9:30 AM ET if no schedule found
-    #     premarket_time = "09:29"
-    #     market_open_time = "09:30"
+    nyse = mcal.get_calendar('NYSE')
+    schedule = pd.DataFrame(nyse.schedule(start_date=datetime.now().date(), end_date=datetime.now().date()))
+    if len(schedule) > 0:
+        market_open = schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+        premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M")
+        market_open_time = market_open.strftime("%H:%M")
+    else:
+        # Default to 9:30 AM ET if no schedule found
+        premarket_time = "09:29"
+        market_open_time = "09:30"
     
-    screener_time = "20:00"
+    screener_time = "22:00"
 
     #FOR TESTING
-    premarket_time = "09:49"
-    market_open_time = "04:00"
+    premarket_time = "21:27"
+    market_open_time = "21:28"
     
     print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
     print(f'Scheduling jobs (all times ET):')
     print(f'- Daily Screener: {screener_time}')
-    # print(f'- Pre-market Screener: {premarket_time}')
+    print(f'- Pre-market Screener: {premarket_time}')
     print(f'- Trading Strategy: {market_open_time}')
     
     schedule_in_et(screener_time, run_daily_screener)
-    # schedule_in_et(premarket_time, schedule_premarket_screener)
+    schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
-    logger.info("- Daily Screener: 20:00 ET")
-    # logger.info(f"- Pre-market Screener: {premarket_time} ET")
+    logger.info(f"- Daily Screener: {screener_time} ET")
+    logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     logger.info("Bot is running and waiting for scheduled tasks...")

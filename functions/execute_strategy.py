@@ -785,8 +785,8 @@ class ExecuteStrategy:
                 os.makedirs('mock_stream')
                 
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            events_filename = f'mock_stream/trading_events_{timestamp}.xlsx'
-            prices_filename = f'mock_stream/details_{timestamp}.xlsx'
+            events_filename = f'logs/trades/trading_events_{timestamp}.xlsx'
+            prices_filename = f'logs/streams/details_{timestamp}.xlsx'
             
             # Export trading events
             with pd.ExcelWriter(events_filename, engine='openpyxl') as writer:
