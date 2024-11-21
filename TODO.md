@@ -1,20 +1,15 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
-    - Test streamer at 1am ET (10pm PT)
-    - Remove hard to borrow stocks from csv of symbols and tickers
+    - Incorporate hard to borrow data into screener
+        - Also add in trading fees so i can truly understand performance
     - Connect to papermoney account
-    - figure out cannot call recv while another coroutine is happening. seems to happen when the streamer is running but nothing to check. No stocks shorted and past buy time threshold.
-    - Add trade history log with profit / loss from actual trades
-        - If stock failed to short it should not get added to the trade history log.
     - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
     - Automate script so that it runs 24/7
+    - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
     
 
 ------        
         
-    - Try to get interest rates and hard to borrow data prior to placing trades
-        - Keep note of which stocks we can't borrow. 
-            - ADD (50M float and 12M market cap)
 
 
 - OTHER TO-DO's

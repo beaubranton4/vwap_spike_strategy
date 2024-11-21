@@ -252,7 +252,7 @@ def main():
         premarket_time = "09:29"
         market_open_time = "09:30"
     
-    screener_time = "22:00"
+    screener_time = "22:30"
 
     #FOR TESTING
     # premarket_time = "21:27"

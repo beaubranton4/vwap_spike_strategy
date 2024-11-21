@@ -52,7 +52,7 @@ def main():
     # tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     # today = datetime.now().strftime('%Y-%m-%d')
     
-    selected_date = '2024-11-20'  # Can be modified to any date in YYYY-MM-DD format
+    selected_date = '2024-11-21'  # Can be modified to any date in YYYY-MM-DD format
     
     
     # screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
@@ -64,7 +64,7 @@ def main():
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
     premarket_screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
-    strategy = ExecuteStrategy(use_mock_data=True)
+    strategy = ExecuteStrategy(use_mock_data=False)
     strategy.execute_vwap_spike_strategy(premarket_screener_results)
     
     
