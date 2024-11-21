@@ -16,11 +16,11 @@ import sys
 
 # Setup logging
 def setup_logging():
-    log_dir = Path('logs')
+    log_dir = Path('logs/main')
     log_dir.mkdir(exist_ok=True)
     
     # Create log filename with timestamp
-    log_file = log_dir / f'trading_bot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+    log_file = log_dir / f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
     
     # Create a formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -184,7 +184,7 @@ def run_trading_strategy():
         filtered_results = pd.read_csv(filtered_file)
         
         # Execute strategy
-        strategy = ExecuteStrategy()
+        strategy = ExecuteStrategy(use_mock_data=False)
         strategy.execute_vwap_spike_strategy(filtered_results)
         
     except Exception as e:
@@ -255,8 +255,8 @@ def main():
     screener_time = "22:00"
 
     #FOR TESTING
-    premarket_time = "21:27"
-    market_open_time = "21:28"
+    # premarket_time = "21:27"
+    # market_open_time = "21:59"
     
     print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
     print(f'Scheduling jobs (all times ET):')

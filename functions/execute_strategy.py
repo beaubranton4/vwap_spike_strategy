@@ -30,7 +30,7 @@ def setup_logger():
         
     # Create a unique log file name with timestamp
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = f'logs/strategy_execution_{timestamp}.log'
+    log_file = f'logs/execute_strategy/{timestamp}.log'
     
     # Create file handler
     file_handler = logging.FileHandler(log_file)
@@ -111,22 +111,22 @@ class ExecuteStrategy:
         self.strategy_end_time = self._get_strategy_end_time()
         self.premarket_highs = {}
         
-        # Add DataFrame to track all events
+        # Initialize trading_events with explicit dtypes
         self.trading_events = pd.DataFrame({
-            'timestamp': pd.Series(dtype='str'),
+            'timestamp': pd.Series(dtype='datetime64[ns]'),
             'symbol': pd.Series(dtype='str'),
             'price': pd.Series(dtype='float64'),
             'event_type': pd.Series(dtype='str'),
             'details': pd.Series(dtype='str')
         })
         
-        # Add DataFrame to track all price data
-        self.price_history = pd.DataFrame(columns=[
-            'timestamp',
-            'symbol',
-            'price',
-            'simulated_time'
-        ])
+        # Initialize price_history with explicit dtypes
+        self.price_history = pd.DataFrame({
+            'timestamp': pd.Series(dtype='datetime64[ns]'),
+            'symbol': pd.Series(dtype='str'),
+            'price': pd.Series(dtype='float64'),
+            'simulated_time': pd.Series(dtype='datetime64[ns]')
+        })
 
         # Add last_position_print_time to track when we last printed positions
         self.last_position_print_time = datetime.now(self.et_timezone)
@@ -689,11 +689,11 @@ class ExecuteStrategy:
                 self.streamer.base_prices = base_prices
             
             ####################### First track pre-market highs and filter stocks #######################
-            logger.info("Starting pre-market tracking phase...")
-            filtered_df = self.track_premarket_highs(df)
+            # logger.info("Starting pre-market tracking phase...")
+            # filtered_df = self.track_premarket_highs(df)
             
-            # Update streamer with filtered symbols
-            symbols = filtered_df['Ticker'].unique().tolist()
+            # # Update streamer with filtered symbols
+            # symbols = filtered_df['Ticker'].unique().tolist()
             
             ####################### Start the main trading stream #######################
             # Start the main trading stream
@@ -932,22 +932,22 @@ class ExecuteStrategy:
                                     if current_price > self.premarket_highs[symbol]:
                                         self.premarket_highs[symbol] = current_price
                                     
-                                    
                                     # Check if premarket high breaches yesterday's high
                                     if self.premarket_highs[symbol] > yesterday_high:
-                                                                                # Track removal event
-                                        new_event = pd.DataFrame([{
-                                            'timestamp': simulated_time,
-                                            'symbol': symbol,
-                                            'price': current_price,
-                                            'event_type': 'REMOVED_PREMARKET',
-                                            'details': f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
-                                        }])
-                                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
+                                        details = f"Pre-market high ${self.premarket_highs[symbol]:.2f} breached yesterday's high ${yesterday_high:.2f}"
                                         
-                                        # Log the removal with detailed information
+                                        # Use the new method instead of concat
+                                        self.add_trading_event(
+                                            timestamp=simulated_time,
+                                            symbol=symbol,
+                                            price=current_price,
+                                            event_type='REMOVED_PREMARKET',
+                                            details=details
+                                        )
+                                        
+                                        # Log the removal
                                         logger.info("\n" + "-"*70)
-                                        logger.info("\n" + "-"*70 + f"\n🚫 REMOVING {symbol}\nCurrent Price: ${current_price:.2f}\nPremarket High: ${self.premarket_highs[symbol]:.2f}\nYesterday High: ${yesterday_high:.2f}\nRemaining Symbols: {len(self.df['Ticker'].unique()) - len(self.symbols_to_remove) - 1}\n" + "-"*70 + "\n")
+                                        logger.info(f"\n🚫 REMOVING {symbol}\nCurrent Price: ${current_price:.2f}\nPremarket High: ${self.premarket_highs[symbol]:.2f}\nYesterday High: ${yesterday_high:.2f}\nRemaining Symbols: {len(self.df['Ticker'].unique()) - len(self.symbols_to_remove) - 1}")
                                         logger.info("-"*70 + "\n")
                                         
                                         self.symbols_to_remove.add(symbol)
@@ -991,4 +991,15 @@ class ExecuteStrategy:
         logger.info("\n" + "="*70)
         logger.info(f"Final Count - Removed: {len(self.symbols_to_remove)} | Remaining: {len(remaining_symbols)}")
         logger.info("="*70 + "\n")
+
+    def add_trading_event(self, timestamp, symbol, price, event_type, details):
+        """Helper method to add events to trading_events DataFrame"""
+        next_idx = len(self.trading_events)
+        self.trading_events.loc[next_idx] = {
+            'timestamp': pd.to_datetime(timestamp),
+            'symbol': str(symbol),
+            'price': float(price),
+            'event_type': str(event_type),
+            'details': str(details)
+        }
 

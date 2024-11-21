@@ -1,6 +1,7 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
     - Test streamer at 1am ET (10pm PT)
+    - Remove hard to borrow stocks from csv of symbols and tickers
     - Connect to papermoney account
     - figure out cannot call recv while another coroutine is happening. seems to happen when the streamer is running but nothing to check. No stocks shorted and past buy time threshold.
     - Add trade history log with profit / loss from actual trades
