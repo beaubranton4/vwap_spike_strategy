@@ -531,22 +531,34 @@ def get_all_positions(client):
         return []
 
 def check_position_match(client, target_symbol, target_quantity, short):
-    """Optimized version using cached positions"""
+    """Optimized version using cached positions with detailed logging"""
     try:
         target_symbol = target_symbol.upper()
         target_quantity = float(target_quantity)
         
-        for position in get_all_positions(client):
+        logger.info(f"\nChecking position match for: {target_symbol} | quantity: {target_quantity}")
+
+        positions = get_all_positions(client)
+        
+        for position in positions:
             try:
                 symbol = position.get('instrument', {}).get('symbol', '').upper()
-                if symbol != target_symbol:
-                    continue
-                    
                 quantity = float(position.get('shortQuantity' if short else 'longQuantity', 0))
-                if quantity > 0 and abs(quantity) == target_quantity:
-                    return True
-            except Exception:
+                
+                if symbol == target_symbol:
+                    if quantity > 0 and abs(quantity) == target_quantity:
+                        logger.info(f"\n✅ Found matching {symbol} position with quantity {quantity}")
+                        return True
+                    else:
+                        logger.info(f"\n❌ Found {symbol} but quantity {quantity} does not match target {target_quantity}")
+                
+            except Exception as e:
+                logger.error(f"Error processing position: {str(e)}")
                 continue
+                
+        logger.info(f"\n❌ No matching position found for {target_symbol}")
         return False
-    except Exception:
+        
+    except Exception as e:
+        logger.error(f"Error in check_position_match: {str(e)}")
         return False

@@ -63,7 +63,7 @@ def main():
     # print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
-    premarket_screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
+    premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
     strategy = ExecuteStrategy(use_mock_data=False)
     strategy.execute_vwap_spike_strategy(premarket_screener_results)
     

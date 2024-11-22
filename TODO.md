@@ -1,5 +1,6 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
 
+    - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
     - Incorporate hard to borrow data into screener
         - Also add in trading fees so i can truly understand performance
     - Connect to papermoney account

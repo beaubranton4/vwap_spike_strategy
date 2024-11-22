@@ -52,8 +52,10 @@ def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
 
 def main():
     client = get_authenticated_client()
-    df = ticker_list
-    df = print_borrow_info(df, client)
+    check = check_position_match(client, 'upst', 3, short=True)
+    print(check)
+    # df = ticker_list
+    # df = print_borrow_info(df, client)
 
 if __name__ == "__main__":
     main()

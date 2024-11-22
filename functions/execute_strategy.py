@@ -70,7 +70,7 @@ class ExecuteStrategy:
         self.is_running = False
         self.message_count = 0
         self.stream_start_time: Optional[datetime] = None
-        self.active_short_positions = {}  # {symbol: entry_price}
+        self.active_short_positions = {'GRWG': 1.83, 'UPST': 73.56}  # {symbol: entry_price}
         self.closed_positions = set()
         self.last_known_prices = {}
         self.symbols_to_remove = set()
@@ -303,8 +303,8 @@ class ExecuteStrategy:
                         else:
                             current_time = datetime.now(self.et_timezone)
                         
-                        # Print positions once per minute
-                        if (current_time - self.last_position_print_time).total_seconds() >= 60:
+                        # Print positions once every 10 minutes
+                        if (current_time - self.last_position_print_time).total_seconds() >= 600:
                             logger.info("\n" + "="*50)
                             logger.info(f"Position Update - {current_time.strftime('%H:%M:%S')} ET")
                             logger.info(f"Active Positions: {self.active_short_positions}")
@@ -342,11 +342,9 @@ class ExecuteStrategy:
                                     
                                     if market_hours:
                                         if symbol in self.active_short_positions:
-                                            # print(f"Checking exit conditions for {symbol} in process_message")
                                             # Check exit conditions for active positions
                                             self._check_exit_conditions(symbol, price, symbol_data, current_time)
                                         else:
-                                            # print(f"Checking entry conditions for {symbol} in process_message")
                                             # Check entry conditions for new positions
                                             if current_time.time() < self.market_open_time.time() or current_time.time() >= BUY_TIME_THRESHOLD[0]:
                                                 return
@@ -357,48 +355,15 @@ class ExecuteStrategy:
             logger.error(f"Error processing message: {e}")
             logger.error(f"Message content: {message}")
 
-    def handle_market_data(self, services: List[Dict[str, Any]]) -> None:
-        """Process market data messages and execute trading logic"""
-        for service in services:
-            contents = service.get("content", [])
-            
-            for content in contents:
-                if content.get('key') and content.get('1'):
-                    symbol = content.get('key')
-                    price = content.get('1')
-                    
-                    current_time = datetime.now(self.et_timezone)
-                    
-                    try:
-                        if symbol in self.df['Ticker'].values:
-                            current_price = float(price)
-                            self.last_known_prices[symbol] = current_price
-                            
-                            # Get trading parameters for symbol
-                            symbol_data = self.df[self.df['Ticker'] == symbol].iloc[0]
-                            
-                            # Check existing positions
-                            if symbol in self.active_short_positions and symbol not in self.closed_positions:
-                                print(f"Checking exit conditions for active position: {symbol} in handle_market_data")
-                                self._check_exit_conditions(symbol, current_price, symbol_data, current_time)
-                                continue
-                            
-                            # Check entry conditions
-                            print(f"Checking entry conditions for {symbol} in handle_market_data")
-                            self._check_entry_conditions(symbol, current_price, symbol_data, current_time)
-                            
-                    except Exception as e:
-                        logger.error(f"Error processing {symbol}: {e}")
-
     def _check_entry_conditions(self, symbol: str, price: float, symbol_data: pd.Series,
                               current_time: datetime) -> None:
         """Check if new short position should be opened"""
         try:
             if price < symbol_data['Target Entry']:
-                logger.info(f"\n{'='*50}")
-                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
-                    f"${price:.2f} | NO SIGNAL - Price did not hit target entry of ${symbol_data['Target Entry']:.2f}")
-                logger.info(f"{'='*50}\n")
+                # logger.info(f"\n{'='*50}")
+                # logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                #     f"${price:.2f} | NO SIGNAL - Price did not hit target entry of ${symbol_data['Target Entry']:.2f}")
+                # logger.info(f"{'='*50}\n")
                 return
 
             if (price >= symbol_data['Target Entry'] and 
@@ -499,6 +464,16 @@ class ExecuteStrategy:
                         self.trading_events = self.trading_events[
                             ~(self.trading_events['symbol'] == symbol)
                         ]
+                        new_event = pd.DataFrame([{
+                            'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                            'symbol': symbol,
+                            'price': price,
+                            'quantity': quantity,
+                            'order_value': order_value,
+                            'event_type': 'NO POSITION FOUND',
+                            'details': f"No matching position found for {symbol}. Removed from active positions and added to closed positions."
+                        }])
+                        self.trading_events = pd.concat([self.trading_events, new_event], ignore_index=True)
                         return
                 except Exception as e:
                     logger.error(f"Error checking position match for {symbol}: {str(e)}")
