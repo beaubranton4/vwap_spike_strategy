@@ -1,6 +1,6 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
     - Better way of checking stock is shorted in my account before placing order.
-        - Option A) Use stop loss and profit target at time of order.
+        - Option A) Use stop loss and profit target at time of order. (Bracket Order - 1st trgs OCO)
         - Option B) Replace check_position_match with actual order status if we can grab order id everytime
             - TODO 11/22: (must make sure order_id is saved even if order is filled immediately)
     - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
@@ -10,7 +10,7 @@
     - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
     - Automate script so that it runs 24/7
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
-    
+    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
 
 ------        
         

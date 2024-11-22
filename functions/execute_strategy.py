@@ -405,7 +405,7 @@ class ExecuteStrategy:
                         #     'trade_time': current_time.strftime('%I:%M%p ET')
 
                         #PLACE ORDER
-                        order_result = place_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)                       
+                        order_result = place_real_order(self.client, symbol, quantity, instruction='SELL_SHORT' , order_type='LIMIT', price=limit_price)                       
                         if order_result != 'REJECTED':
                             logger.info(f"✅ Order successfully placed w status: {order_result}")
                             self.active_short_positions[symbol] = {
@@ -491,7 +491,7 @@ class ExecuteStrategy:
                                 return
                             
                             # PLACE ORDER
-                            order_result = cover_short_order(self.client, symbol, quantity, order_type='LIMIT', price=limit_price)                      
+                            order_result = place_real_order(self.client, symbol, quantity, instruction='BUY_TO_COVER', order_type='LIMIT', price=limit_price)                      
                             if order_result != 'REJECTED':
                                 logger.info(f"${price:.2f} | Order Successfully Placed | 📉 Stop loss hit at ${stop_price:.2f} | Entry: ${entry_price:.2f} | Status: {order_result}")
                                 order_success = True
@@ -523,7 +523,7 @@ class ExecuteStrategy:
                                 return
                             
                             # PLACE ORDER 
-                            order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET') 
+                            order_result = place_real_order(self.client, symbol, quantity, instruction='BUY_TO_COVER' , order_type='MARKET') 
                             if order_result != 'REJECTED':
                                 logger.info(f"${price:.2f} | Order Successfully Placed | 📈 Profit target at ${target_price:.2f} | Entry: ${entry_price:.2f} | Status: {order_result}")
                                 order_success = True
@@ -601,7 +601,7 @@ class ExecuteStrategy:
                             logger.info(f"{symbol}: ${current_price:.2f} | Entry: ${entry_price:.2f} | ⏰ END OF DAY CLOSE")
                             
                             # PLACE ORDER
-                            order_result = cover_short_order(self.client, symbol, quantity, order_type='MARKET')
+                            order_result = place_real_order(self.client, symbol, quantity, instruction='BUY_TO_COVER' , order_type='MARKET')
                             if order_result !=  'REJECTED':
                                 logger.info(f"${symbol} | Order Successfully Placed | ⏰ END OF DAY CLOSE - sold at ${current_price:.2f} | Entry: ${entry_price:.2f} | Status: {order_result}")
                                 order_success = True

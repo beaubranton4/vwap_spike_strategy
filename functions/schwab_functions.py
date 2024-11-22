@@ -277,14 +277,15 @@ def check_order_status(client, account_hash: str, order_id: str) -> None:
     except Exception as e:
         logger.error(f"Error checking order status: {str(e)}")
 
-def place_short_order(client: Client, symbol: str, quantity: int, order_type: str = 'LIMIT', price: float = None) -> Dict:
+def place_real_order(client: Client, symbol: str, quantity: int, instruction: str, order_type: str = 'LIMIT', price: float = None) -> Dict:
     """
-    Place a short sell order - returns the order status (see check_order_status for details)
+    Place an order - returns the order status (see check_order_status for details)
     
     Args:
         client: Schwab API client
         symbol: Stock symbol
         quantity: Number of shares
+        instruction: 'SELL_SHORT' or 'BUY_TO_COVER' or 'BUY' or 'SELL'
         order_type: 'MARKET' or 'LIMIT' (default: 'LIMIT')
         price: Limit price (required for LIMIT orders, ignored for MARKET orders)
     """
@@ -311,7 +312,7 @@ def place_short_order(client: Client, symbol: str, quantity: int, order_type: st
             "orderStrategyType": "SINGLE",
             "orderLegCollection": [
                 {
-                    "instruction": "SELL_SHORT",
+                    "instruction": instruction,
                     "quantity": int(quantity),
                     "instrument": {
                         "symbol": symbol.upper(),
@@ -333,83 +334,12 @@ def place_short_order(client: Client, symbol: str, quantity: int, order_type: st
         order_id = order_url.split('/')[-1]  # Get the last part of the URL
         # Check order status (if order is filled immediately, it will be returned as 'FAILED')
         order_status = check_order_status(client, account_hash, order_id)
+        logger.info(f"Order ID: {order_id}")
         logger.info(f"Order status: {order_status}")    
         return order_status
             
     except Exception as e:
         logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
-        return {'status': 'ERROR'}
-
-def cover_short_order(client: Client, symbol: str, quantity: int, order_type: str = 'LIMIT', price: float = None) -> Dict:
-    """
-    Place an order to cover a short position
-    
-    Args:
-        client: Schwab API client
-        symbol: Stock symbol
-        quantity: Number of shares
-        order_type: 'MARKET' or 'LIMIT' (default: 'LIMIT')
-        price: Limit price (required for LIMIT orders, ignored for MARKET orders)
-    """
-    try:
-        # Get account hash
-        linked_accounts_response = client.account_linked()
-        if linked_accounts_response.status_code != 200:
-            logger.error(f"Failed to get account information for {symbol}")
-            return {'status': 'ERROR'}
-            
-        account_hash = linked_accounts_response.json()[0].get('hashValue')
-        
-        # Validate order type and price
-        order_type = order_type.upper()
-        if order_type == 'LIMIT' and price is None:
-            logger.error("Price is required for LIMIT orders")
-            return {'status': 'ERROR', 'message': 'Price required for LIMIT orders'}
-        
-        # Create the order
-        order = {
-            "orderType": order_type,
-            "session": "NORMAL",
-            "duration": "DAY",
-            "orderStrategyType": "SINGLE",
-            "orderLegCollection": [
-                {
-                    "instruction": "BUY_TO_COVER",
-                    "quantity": int(quantity),
-                    "instrument": {
-                        "symbol": symbol.upper(),
-                        "assetType": "EQUITY"
-                    }
-                }
-            ]
-        }
-        
-        # Add price for limit orders
-        if order_type == 'LIMIT':
-            order["price"] = str(price)
-        
-        # Place the order
-        order_response = client.order_place(account_hash, order)
-        
-        # Log full response details
-        # logger.info(f"Order Response Status: {order_response.status_code}")
-        # logger.info(f"Order Response Headers: {dict(order_response.headers)}")
-        # logger.info(f"Order Response Content: {order_response.content}")
-        
-        if order_response.status_code in [200, 201]:
-            order_id = order_response.headers.get('Location', '')
-            logger.info(f"✅ Successfully placed {order_type} cover order: {quantity} {symbol}" + 
-                       (f" @ ${price:.2f}" if order_type == 'LIMIT' else ""))
-            return {
-                'status': 'SUCCESS',
-                'order_id': order_id
-            }
-        else:
-            logger.error(f"❌ Failed to place cover order for {symbol}: {order_response.text}")
-            return {'status': 'ERROR'}
-            
-    except Exception as e:
-        logger.error(f"❌ Error placing cover order for {symbol}: {str(e)}")
         return {'status': 'ERROR'}
 
 def check_positions(client):
