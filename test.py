@@ -111,7 +111,7 @@ def place_bracket_order(client: Client, symbol: str, quantity: int, instruction:
             "session": "NORMAL",
             "duration": "DAY",
             "orderStrategyType": "TRIGGER",
-            "releaseTime": exit_datetime.isoformat(),
+            "specialInstruction": "ALL_OR_NONE",
             "orderLegCollection": [
                 {
                     "instruction": instruction,
@@ -205,6 +205,101 @@ def place_bracket_order(client: Client, symbol: str, quantity: int, instruction:
         logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
         return {'status': 'ERROR'}
 
+def test_place_timed_order(client: Client, symbol: str, quantity: int, instruction: str, 
+                          order_type: str = 'MARKET', price: float = None, 
+                          execution_time: str = None) -> Dict:
+    """
+    Test placing a timed order using a TRIGGER strategy
+    """
+    try:
+        # Get account hash
+        linked_accounts_response = client.account_linked()
+        if linked_accounts_response.status_code != 200:
+            logger.error(f"Failed to place order for {symbol}")
+            return 'ERROR_WITH_API_CALL'
+            
+        account_hash = linked_accounts_response.json()[0].get('hashValue')
+        
+        # Convert execution_time to UTC datetime
+        if execution_time:
+            now = datetime.now(pytz.timezone('America/New_York'))
+            hour, minute = map(int, execution_time.split(':'))
+            exec_datetime = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            
+            if exec_datetime <= now:
+                exec_datetime += timedelta(days=1)
+                
+            exec_datetime_utc = exec_datetime.astimezone(pytz.UTC)
+            logger.info(f"Order will execute at: {exec_datetime} ET ({exec_datetime_utc} UTC)")
+        
+        # Create the order with TRIGGER strategy
+        order = {
+            "orderStrategyType": "TRIGGER",
+            "session": "NORMAL",
+            "duration": "DAY",
+            "orderLegCollection": [
+                {
+                    "orderLegType": "EQUITY",
+                    "instrument": {
+                        "symbol": symbol.upper(),
+                        "assetType": "EQUITY"
+                    },
+                    "instruction": "WAIT",  # Using WAIT as trigger condition
+                    "quantity": 0
+                }
+            ],
+            "activationTime": exec_datetime_utc.strftime('%Y-%m-%dT%H:%M:%S.000Z'),
+            "childOrderStrategies": [
+                {
+                    "orderType": order_type,
+                    "session": "NORMAL",
+                    "duration": "DAY",
+                    "orderStrategyType": "SINGLE",
+                    "orderLegCollection": [
+                        {
+                            "orderLegType": "EQUITY",
+                            "instruction": instruction,
+                            "quantity": int(quantity),
+                            "instrument": {
+                                "symbol": symbol.upper(),
+                                "assetType": "EQUITY"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        
+        # Add price for limit orders
+        if order_type == 'LIMIT' and price is not None:
+            order["childOrderStrategies"][0]["price"] = str(price)
+        
+        # Place the order
+        order_response = client.order_place(account_hash, order)
+        
+        # Extract order ID and check status
+        order_url = order_response.headers.get('Location', '')
+        order_id = order_url.split('/')[-1]
+        logger.info(f"Order ID: {order_id}")
+        
+        # Get current time and 24 hours ago in ISO format
+        now_utc = datetime.now(pytz.UTC)
+        from_time = (now_utc - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        to_time = now_utc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+        
+        order_status = check_order_status(
+            client, 
+            account_hash, 
+            order_id,
+            fromEnteredTime=from_time,
+            toEnteredTime=to_time
+        )
+        logger.info(f"Order status: {order_status}")    
+        return order_status
+            
+    except Exception as e:
+        logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
+        return {'status': 'ERROR'}
 
 def main():
     # Initialize client
@@ -216,14 +311,25 @@ def main():
     limit_price = 2.09
     stop_price = 2.60
     target_price = 1.50
-    exit_time = '15:30'
+    execution_time = '15:16'
 
-    try:
-        order_status = place_bracket_order(client, symbol, quantity, instruction='SELL_SHORT', order_type='LIMIT', price=limit_price, stop_price=stop_price, target_price=target_price, exit_time=exit_time)
-        logger.info(f"Order status: {order_status}")
-    except Exception as e:
-        logger.error(f"❌ Error during order placement: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
+    # try:
+    #     order_status = place_bracket_order(client, symbol, quantity, instruction='SELL_SHORT', order_type='LIMIT', price=limit_price, stop_price=stop_price, target_price=target_price, exit_time=exit_time)
+    #     logger.info(f"Order status: {order_status}")
+    # except Exception as e:
+    #     logger.error(f"❌ Error during order placement: {str(e)}")
+    #     logger.error(f"Traceback: {traceback.format_exc()}")
+
+    # Example usage of timed order
+    order_status = test_place_timed_order(
+        client=client,
+        symbol=symbol,
+        quantity=quantity,
+        instruction='BUY',
+        order_type='MARKET',
+        execution_time=execution_time  # Will execute at 3:30 PM ET
+    )
+    print(f"Timed order status: {order_status}")
 
 if __name__ == "__main__":
     main()

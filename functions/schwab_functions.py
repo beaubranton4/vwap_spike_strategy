@@ -522,3 +522,233 @@ def check_position_match(client, target_symbol, target_quantity, short):
     except Exception as e:
         logger.error(f"Error in check_position_match: {str(e)}")
         return False
+    
+
+#SCHWAB API DOCUMENTATION FOR ORDERS
+# https://developer.schwab.com/docs/services/5b3323445b3323445b332344/operations/5b3323445b3323445b332345
+
+"""
+{
+  "session": "NORMAL",
+  "duration": "DAY",
+  "orderType": "MARKET",
+  "cancelTime": "2024-11-22T19:43:02.866Z",
+  "complexOrderStrategyType": "NONE",
+  "quantity": 0,
+  "filledQuantity": 0,
+  "remainingQuantity": 0,
+  "destinationLinkName": "string",
+  "releaseTime": "2024-11-22T19:43:02.866Z",
+  "stopPrice": 0,
+  "stopPriceLinkBasis": "MANUAL",
+  "stopPriceLinkType": "VALUE",
+  "stopPriceOffset": 0,
+  "stopType": "STANDARD",
+  "priceLinkBasis": "MANUAL",
+  "priceLinkType": "VALUE",
+  "price": 0,
+  "taxLotMethod": "FIFO",
+  "orderLegCollection": [
+    {
+      "orderLegType": "EQUITY",
+      "legId": 0,
+      "instrument": {
+        "cusip": "string",
+        "symbol": "string",
+        "description": "string",
+        "instrumentId": 0,
+        "netChange": 0,
+        "type": "SWEEP_VEHICLE"
+      },
+      "instruction": "BUY",
+      "positionEffect": "OPENING",
+      "quantity": 0,
+      "quantityType": "ALL_SHARES",
+      "divCapGains": "REINVEST",
+      "toSymbol": "string"
+    }
+  ],
+  "activationPrice": 0,
+  "specialInstruction": "ALL_OR_NONE",
+  "orderStrategyType": "SINGLE",
+  "orderId": 0,
+  "cancelable": false,
+  "editable": false,
+  "status": "AWAITING_PARENT_ORDER",
+  "enteredTime": "2024-11-22T19:43:02.866Z",
+  "closeTime": "2024-11-22T19:43:02.866Z",
+  "accountNumber": 0,
+  "orderActivityCollection": [
+    {
+      "activityType": "EXECUTION",
+      "executionType": "FILL",
+      "quantity": 0,
+      "orderRemainingQuantity": 0,
+      "executionLegs": [
+        {
+          "legId": 0,
+          "price": 0,
+          "quantity": 0,
+          "mismarkedQuantity": 0,
+          "instrumentId": 0,
+          "time": "2024-11-22T19:43:02.866Z"
+        }
+      ]
+    }
+  ],
+  "replacingOrderCollection": [
+    "string"
+  ],
+  "childOrderStrategies": [
+    "string"
+  ],
+  "statusDescription": "string"
+}
+
+
+Order{
+session	sessionstring
+Enum:
+[ NORMAL, AM, PM, SEAMLESS ]
+duration	durationstring
+Enum:
+[ DAY, GOOD_TILL_CANCEL, FILL_OR_KILL, IMMEDIATE_OR_CANCEL, END_OF_WEEK, END_OF_MONTH, NEXT_END_OF_MONTH, UNKNOWN ]
+orderType	orderTypestring
+Enum:
+[ MARKET, LIMIT, STOP, STOP_LIMIT, TRAILING_STOP, CABINET, NON_MARKETABLE, MARKET_ON_CLOSE, EXERCISE, TRAILING_STOP_LIMIT, NET_DEBIT, NET_CREDIT, NET_ZERO, LIMIT_ON_CLOSE, UNKNOWN ]
+cancelTime	string($date-time)
+complexOrderStrategyType	complexOrderStrategyTypestring
+Enum:
+[ NONE, COVERED, VERTICAL, BACK_RATIO, CALENDAR, DIAGONAL, STRADDLE, STRANGLE, COLLAR_SYNTHETIC, BUTTERFLY, CONDOR, IRON_CONDOR, VERTICAL_ROLL, COLLAR_WITH_STOCK, DOUBLE_DIAGONAL, UNBALANCED_BUTTERFLY, UNBALANCED_CONDOR, UNBALANCED_IRON_CONDOR, UNBALANCED_VERTICAL_ROLL, MUTUAL_FUND_SWAP, CUSTOM ]
+quantity	number($double)
+filledQuantity	number($double)
+remainingQuantity	number($double)
+requestedDestination	requestedDestinationstring
+Enum:
+[ INET, ECN_ARCA, CBOE, AMEX, PHLX, ISE, BOX, NYSE, NASDAQ, BATS, C2, AUTO ]
+destinationLinkName	string
+releaseTime	string($date-time)
+stopPrice	number($double)
+stopPriceLinkBasis	stopPriceLinkBasisstring
+Enum:
+[ MANUAL, BASE, TRIGGER, LAST, BID, ASK, ASK_BID, MARK, AVERAGE ]
+stopPriceLinkType	stopPriceLinkTypestring
+Enum:
+[ VALUE, PERCENT, TICK ]
+stopPriceOffset	number($double)
+stopType	stopTypestring
+Enum:
+[ STANDARD, BID, ASK, LAST, MARK ]
+priceLinkBasis	priceLinkBasisstring
+Enum:
+[ MANUAL, BASE, TRIGGER, LAST, BID, ASK, ASK_BID, MARK, AVERAGE ]
+priceLinkType	priceLinkTypestring
+Enum:
+[ VALUE, PERCENT, TICK ]
+price	number($double)
+taxLotMethod	taxLotMethodstring
+Enum:
+[ FIFO, LIFO, HIGH_COST, LOW_COST, AVERAGE_COST, SPECIFIC_LOT, LOSS_HARVESTER ]
+orderLegCollection	[
+xml: OrderedMap { "name": "orderLegCollection", "wrapped": true }
+OrderLegCollection{
+orderLegType	string
+Enum:
+[ EQUITY, OPTION, INDEX, MUTUAL_FUND, CASH_EQUIVALENT, FIXED_INCOME, CURRENCY, COLLECTIVE_INVESTMENT ]
+legId	integer($int64)
+instrument	AccountsInstrument{
+oneOf ->	
+AccountCashEquivalent{
+assetType*	string
+Enum:
+[ EQUITY, OPTION, INDEX, MUTUAL_FUND, CASH_EQUIVALENT, FIXED_INCOME, CURRENCY, COLLECTIVE_INVESTMENT ]
+cusip	string
+symbol	string
+description	string
+instrumentId	integer($int64)
+netChange	number($double)
+type	string
+Enum:
+Array [ 4 ]
+}
+AccountEquity{
+assetType*	string
+Enum:
+[ EQUITY, OPTION, INDEX, MUTUAL_FUND, CASH_EQUIVALENT, FIXED_INCOME, CURRENCY, COLLECTIVE_INVESTMENT ]
+cusip	string
+symbol	string
+description	string
+instrumentId	integer($int64)
+netChange	number($double)
+}
+AccountFixedIncome{...}
+AccountMutualFund{...}
+AccountOption{...}
+}
+instruction	instructionstring
+Enum:
+[ BUY, SELL, BUY_TO_COVER, SELL_SHORT, BUY_TO_OPEN, BUY_TO_CLOSE, SELL_TO_OPEN, SELL_TO_CLOSE, EXCHANGE, SELL_SHORT_EXEMPT ]
+positionEffect	string
+Enum:
+[ OPENING, CLOSING, AUTOMATIC ]
+quantity	number($double)
+quantityType	string
+Enum:
+[ ALL_SHARES, DOLLARS, SHARES ]
+divCapGains	string
+Enum:
+[ REINVEST, PAYOUT ]
+toSymbol	string
+}]
+activationPrice	number($double)
+specialInstruction	specialInstructionstring
+Enum:
+[ ALL_OR_NONE, DO_NOT_REDUCE, ALL_OR_NONE_DO_NOT_REDUCE ]
+orderStrategyType	orderStrategyTypestring
+Enum:
+[ SINGLE, CANCEL, RECALL, PAIR, FLATTEN, TWO_DAY_SWAP, BLAST_ALL, OCO, TRIGGER ]
+orderId	integer($int64)
+cancelable	boolean
+default: false
+editable	boolean
+default: false
+status	statusstring
+Enum:
+[ AWAITING_PARENT_ORDER, AWAITING_CONDITION, AWAITING_STOP_CONDITION, AWAITING_MANUAL_REVIEW, ACCEPTED, AWAITING_UR_OUT, PENDING_ACTIVATION, QUEUED, WORKING, REJECTED, PENDING_CANCEL, CANCELED, PENDING_REPLACE, REPLACED, FILLED, EXPIRED, NEW, AWAITING_RELEASE_TIME, PENDING_ACKNOWLEDGEMENT, PENDING_RECALL, UNKNOWN ]
+enteredTime	string($date-time)
+closeTime	string($date-time)
+tag	string
+accountNumber	integer($int64)
+orderActivityCollection	[
+xml: OrderedMap { "name": "orderActivity", "wrapped": true }
+OrderActivity{
+activityType	string
+Enum:
+Array [ 2 ]
+executionType	string
+Enum:
+[ FILL ]
+quantity	number($double)
+orderRemainingQuantity	number($double)
+executionLegs	[
+xml: OrderedMap { "name": "executionLegs", "wrapped": true }
+ExecutionLeg{
+legId	integer($int64)
+price	number($double)
+quantity	number($double)
+mismarkedQuantity	number($double)
+instrumentId	integer($int64)
+time	string($date-time)
+}]
+}]
+replacingOrderCollection	[
+xml: OrderedMap { "name": "replacingOrder", "wrapped": true }
+{
+}]
+childOrderStrategies	[
+xml: OrderedMap { "name": "childOrder", "wrapped": true }
+{
+}]
+statusDescription	string
+}
+"""

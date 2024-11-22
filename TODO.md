@@ -1,8 +1,11 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    - Better way of checking stock is shorted in my account before placing order.
-        - Option A) Use stop loss and profit target at time of order. (Bracket Order - 1st trgs OCO)
-        - Option B) Replace check_position_match with actual order status if we can grab order id everytime
-            - TODO 11/22: (must make sure order_id is saved even if order is filled immediately)
+    
+    - Check backtest to see when we actually exit the position eod. 
+    - Use 'MOC' order for end of day or do i just continue using current check_end_of_day_condition?
+        - Using 'MOC' i will need to cancel previous orders if not filled, or build other checking logic.
+    - See if i want to use stop price or limit price or if i want to use percentage of entry price for bracket order
+    - Implement Bracket order and MOC (or stick with current method) in execution
+    - Make all orders "ALL OR NONE"
     - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
     - Incorporate hard to borrow data into screener
         - Also add in trading fees so i can truly understand performance
