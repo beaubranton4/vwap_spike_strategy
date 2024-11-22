@@ -13,6 +13,12 @@ import os
 import subprocess
 import psutil
 import sys
+import logging
+import traceback
+import json
+import requests
+
+logger = logging.getLogger(__name__)
 
 def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
     """Print borrow info for all tickers and add data to dataframe"""
@@ -51,11 +57,19 @@ def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
     return df
 
 def main():
+    # Initialize client
     client = get_authenticated_client()
-    check = check_position_match(client, 'upst', 3, short=True)
-    print(check)
-    # df = ticker_list
-    # df = print_borrow_info(df, client)
+    
+    # Order parameters
+    symbol = 'AAPL'
+    quantity = 1
+    limit_price = 230
+
+    try:
+        order_status = place_short_order(client, symbol, quantity, 'LIMIT', limit_price)
+    except Exception as e:
+        logger.error(f"❌ Error during order placement: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
 
 if __name__ == "__main__":
     main()

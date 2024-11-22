@@ -258,12 +258,6 @@ def main():
     # premarket_time = "21:27"
     # market_open_time = "21:59"
     
-    print(f'Current ET time: {datetime.now(et_tz).strftime("%H:%M")}')
-    print(f'Scheduling jobs (all times ET):')
-    print(f'- Daily Screener: {screener_time}')
-    print(f'- Pre-market Screener: {premarket_time}')
-    print(f'- Trading Strategy: {market_open_time}')
-    
     schedule_in_et(screener_time, run_daily_screener)
     schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)

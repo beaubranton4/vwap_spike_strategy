@@ -1,9 +1,12 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-
+    - Better way of checking stock is shorted in my account before placing order.
+        - Option A) Use stop loss and profit target at time of order.
+        - Option B) Replace check_position_match with actual order status if we can grab order id everytime
+            - TODO 11/22: (must make sure order_id is saved even if order is filled immediately)
     - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
     - Incorporate hard to borrow data into screener
         - Also add in trading fees so i can truly understand performance
-    - Connect to papermoney account
+    - Connect to papermoney account?
     - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
     - Automate script so that it runs 24/7
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
@@ -59,7 +62,45 @@
         - auto_authenticate and get_price_history are using the in-house functions
         - everything else is using the schwabdev library
     
+Order response example:
 
+Complete Order Details:
+INFO:__main__:{
+  "session": "NORMAL",
+  "duration": "DAY",
+  "orderType": "LIMIT",
+  "complexOrderStrategyType": "NONE",
+  "quantity": 1.0,
+  "filledQuantity": 0.0,
+  "remainingQuantity": 0.0,
+  "requestedDestination": "AUTO",
+  "destinationLinkName": "AutoRoute",
+  "price": 200.0,
+  "orderLegCollection": [
+    {
+      "orderLegType": "EQUITY",
+      "legId": 1,
+      "instrument": {
+        "assetType": "EQUITY",
+        "cusip": "037833100",
+        "symbol": "AAPL",
+        "instrumentId": 1206667
+      },
+      "instruction": "SELL_SHORT",
+      "positionEffect": "OPENING",
+      "quantity": 1.0
+    }
+  ],
+  "orderStrategyType": "SINGLE",
+  "orderId": 1002294018382,
+  "cancelable": false,
+  "editable": false,
+  "status": "REJECTED",
+  "enteredTime": "2024-11-22T04:51:07+0000",
+  "closeTime": "2024-11-22T04:51:07+0000",
+  "tag": "TA_bbrantongmailcom1729559833",
+  "accountNumber": 83296642,
+  "statusDescription": "Your limit is significantly higher or lower than the last traded price. Confirm you are trading the correct security."
 
 ORCHESTRATOR DESIGN PLAN:
 

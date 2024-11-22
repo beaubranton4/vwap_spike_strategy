@@ -238,9 +238,48 @@ def get_cash_balance(client):
     except Exception as e:
         print(f"Error fetching account information: {str(e)}")
 
+def check_order_status(client, account_hash: str, order_id: str) -> None:
+    """Check and log the status of a specific order"""
+    """Will return one of the following: 
+      AWAITING_PARENT_ORDER, 
+      AWAITING_CONDITION, 
+      AWAITING_STOP_CONDITION, 
+      AWAITING_MANUAL_REVIEW, 
+      ACCEPTED, 
+      AWAITING_UR_OUT, 
+      PENDING_ACTIVATION, 
+      QUEUED, 
+      WORKING, 
+      REJECTED, 
+      PENDING_CANCEL, 
+      CANCELED, 
+      PENDING_REPLACE, 
+      REPLACED, 
+      FILLED, 
+      EXPIRED, 
+      NEW, 
+      AWAITING_RELEASE_TIME, 
+      PENDING_ACKNOWLEDGEMENT, 
+      PENDING_RECALL, 
+      UNKNOWN,
+      ERROR_WITH_API_CALL"""
+    try:
+        response = client.order_details(account_hash, order_id)
+        if response.status_code == 200:
+            order_details = response.json()
+            order_status = order_details.get('status')
+            return order_status 
+        else:    
+            logger.error(f"Failed to get order details. Status code: {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return 'ERROR_WITH_API_CALL'
+            
+    except Exception as e:
+        logger.error(f"Error checking order status: {str(e)}")
+
 def place_short_order(client: Client, symbol: str, quantity: int, order_type: str = 'LIMIT', price: float = None) -> Dict:
     """
-    Place a short sell order
+    Place a short sell order - returns the order status (see check_order_status for details)
     
     Args:
         client: Schwab API client
@@ -253,8 +292,8 @@ def place_short_order(client: Client, symbol: str, quantity: int, order_type: st
         # Get account hash
         linked_accounts_response = client.account_linked()
         if linked_accounts_response.status_code != 200:
-            logger.error(f"Failed to get account information for {symbol}")
-            return {'status': 'ERROR'}
+            logger.error(f"Failed to place order for {symbol}")
+            return 'ERROR_WITH_API_CALL'
             
         account_hash = linked_accounts_response.json()[0].get('hashValue')
         
@@ -262,7 +301,7 @@ def place_short_order(client: Client, symbol: str, quantity: int, order_type: st
         order_type = order_type.upper()
         if order_type == 'LIMIT' and price is None:
             logger.error("Price is required for LIMIT orders")
-            return {'status': 'ERROR', 'message': 'Price required for LIMIT orders'}
+            return 'ERROR_WITH_API_CALL'
         
         # Create the order
         order = {
@@ -289,22 +328,13 @@ def place_short_order(client: Client, symbol: str, quantity: int, order_type: st
         # Place the order
         order_response = client.order_place(account_hash, order)
         
-        # Log full response details
-        # logger.info(f"Order Response Status: {order_response.status_code}")
-        # logger.info(f"Order Response Headers: {dict(order_response.headers)}")
-        # logger.info(f"Order Response Content: {order_response.content}")
-        
-        if order_response.status_code in [200, 201]:
-            order_id = order_response.headers.get('Location', '')
-            logger.info(f"✅ Successfully placed {order_type} short order: {quantity} {symbol}" + 
-                       (f" @ ${price:.2f}" if order_type == 'LIMIT' else ""))
-            return {
-                'status': 'SUCCESS',
-                'order_id': order_id
-            }
-        else:
-            logger.error(f"❌ Failed to place order for {symbol}: {order_response.text}")
-            return {'status': 'ERROR'}
+        # Extract order ID from the response
+        order_url = order_response.headers.get('Location', '')
+        order_id = order_url.split('/')[-1]  # Get the last part of the URL
+        # Check order status (if order is filled immediately, it will be returned as 'FAILED')
+        order_status = check_order_status(client, account_hash, order_id)
+        logger.info(f"Order status: {order_status}")    
+        return order_status
             
     except Exception as e:
         logger.error(f"❌ Error placing order for {symbol}: {str(e)}")
@@ -334,7 +364,7 @@ def cover_short_order(client: Client, symbol: str, quantity: int, order_type: st
         order_type = order_type.upper()
         if order_type == 'LIMIT' and price is None:
             logger.error("Price is required for LIMIT orders")
-            return 
+            return {'status': 'ERROR', 'message': 'Price required for LIMIT orders'}
         
         # Create the order
         order = {

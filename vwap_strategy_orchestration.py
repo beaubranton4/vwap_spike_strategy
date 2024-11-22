@@ -18,7 +18,7 @@ def main():
     print(f"Account balance: {account_balance}")
     cash_balance = get_cash_balance(client)
     print(f"Cash balance: {cash_balance}")
-
+    print(datetime.now())
     ############STEP 1: RUN DAILY SCREENER (5pm PT)####################
 
     # May need to seperate screener and executor (will run at different times)
@@ -63,9 +63,9 @@ def main():
     # print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
-    premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
-    strategy = ExecuteStrategy(use_mock_data=False)
-    strategy.execute_vwap_spike_strategy(premarket_screener_results)
+    # premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
+    # strategy = ExecuteStrategy(use_mock_data=True)
+    # strategy.execute_vwap_spike_strategy(premarket_screener_results)
     
     
 if __name__ == "__main__":
