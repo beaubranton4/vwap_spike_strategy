@@ -70,7 +70,7 @@ class ExecuteStrategy:
         self.is_running = False
         self.message_count = 0
         self.stream_start_time: Optional[datetime] = None
-        self.active_short_positions = {'GRWG': 1.83, 'UPST': 73.56}  # {symbol: entry_price}
+        self.active_short_positions = {}  # {symbol: entry_price}
         self.closed_positions = set()
         self.last_known_prices = {}
         self.symbols_to_remove = set()
