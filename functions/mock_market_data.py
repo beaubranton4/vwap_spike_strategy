@@ -34,7 +34,7 @@ class MockMarketDataStreamer:
             self.current_time = start_time
             
         self.time_multiplier = time_multiplier
-        self.time_increment = timedelta(minutes=30)  # 30-minute increments
+        self.time_increment = timedelta(minutes=15)  # 30-minute increments
         self.last_update = datetime.now()
         
         # Track session type for price volatility adjustment

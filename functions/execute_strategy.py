@@ -368,7 +368,7 @@ class ExecuteStrategy:
                 # Calculate order details
                 limit_price = max(symbol_data['Target Entry'], price)
                 stop_price = symbol_data['Stop Price']
-                target_price = symbol_data['Target Price']
+                target_price = symbol_data['Sell Price']
                 quantity = int(symbol_data['Shares'])
                 order_value = limit_price * quantity
                 

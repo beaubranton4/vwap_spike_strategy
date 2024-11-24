@@ -10,19 +10,18 @@
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
     
     -----------------------------------------------------------------------------------------------------
-        
+    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
+        - Instead of failsafe, i can just create a new end of day check that closes any positions that are still open at the end of the day that were placed today by the strategy. Don't rely on the active_short_positions and closed_positions. alternatively i can always just close all open positions at the end of the day. Don't have other trades in this account at all.
 
 
 - OTHER TO-DO's
     
-    - Incorporate hard to borrow data into screener
-        - Also add in trading fees so i can truly understand performance
-    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
+    - Incorporate hard to borrow data into screener (premarket or daily screener?)
+    -Instead of relying on trading events i can build a completely seperate function that checks orders to calculate performance
+    closed_positions dataframes.
     - Update backtest to only use current strategy and use schwabdev API for prices
         - also fix so that we don't incorporate current day's data in backtest (current day data is not complete with full pre-market data)
-    - Async functions and using another streamer for account positions.
-    - Utilize schwabdev streaming functions for more concise code and simplicity.
-    - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
+        - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE
                 POSITION
                 ENTRY_TIME
                 ACCOUNT_SIZE
@@ -30,7 +29,6 @@
                 RESULT_INDEXER
                 BOUGHT_TODAY
                 results dataframe
-    - Check if there's a way to see the cost of shorting a stock before making a trade call
     - Tune limit and market orders
     - Update organization of "Data base" so that everything can be found in one place. Logs and outputs and files etc.
     
@@ -52,63 +50,13 @@
                 # Save files
                 data.to_excel(f"{folder_path}/daily_screen.xlsx") -->
     - Find a way to get latest stocks info (like float and market cap) and all stock without having to manually download them through finviz
-    - See if there's a way we can filter out stocks hard to borrow or have high interest rates (based on float and market cap?)
     - Maybe i can keep my own DB of historical data for stocks and use that to run my screener?
         - Then the screener would just need to pull data from today and append to my DB
         - It would make the screener faster
-        - Learn about access tokens and how to auto authenticate either with my function or with the schwabdev api
-    - Make sure we're auto authenticating
         - Can i consolidate the tokens into one file? 
     - Document that we are currently using both in-house Schwab API functions and the schwabdev library.
         - auto_authenticate and get_price_history are using the in-house functions
-        - everything else is using the schwabdev library
-    
-Order response example:
-
-Complete Order Details:
-INFO:__main__:{
-  "session": "NORMAL",
-  "duration": "DAY",
-  "orderType": "LIMIT",
-  "complexOrderStrategyType": "NONE",
-  "quantity": 1.0,
-  "filledQuantity": 0.0,
-  "remainingQuantity": 0.0,
-  "requestedDestination": "AUTO",
-  "destinationLinkName": "AutoRoute",
-  "price": 200.0,
-  "orderLegCollection": [
-    {
-      "orderLegType": "EQUITY",
-      "legId": 1,
-      "instrument": {
-        "assetType": "EQUITY",
-        "cusip": "037833100",
-        "symbol": "AAPL",
-        "instrumentId": 1206667
-      },
-      "instruction": "SELL_SHORT",
-      "positionEffect": "OPENING",
-      "quantity": 1.0
-    }
-  ],
-  "orderStrategyType": "SINGLE",
-  "orderId": 1002294018382,
-  "cancelable": false,
-  "editable": false,
-  "status": "REJECTED",
-  "enteredTime": "2024-11-22T04:51:07+0000",
-  "closeTime": "2024-11-22T04:51:07+0000",
-  "tag": "TA_bbrantongmailcom1729559833",
-  "accountNumber": 83296642,
-  "statusDescription": "Your limit is significantly higher or lower than the last traded price. Confirm you are trading the correct security."
-
-ORCHESTRATOR DESIGN PLAN:
-
-I'd like to turn this into a function that takes in multiple inputs and acts as an orchestrator. I want it to take as input a Ticker, a Target Entry Price, a Buy Time Threshold, a Stop Loss Price, a Profit Take Price, a Sell Time Threshold. 
-
-I want it to run the existing stream for that 'Ticker' and if the price goes above the Target Entry Price, before the Buy Time Threshold i would like to print('SHORT STOCK FUNCTION INITIATED, bought [quantity] shares of [ticker] for a total price of [quantity*ticker price]'). THEN if that message was triggered, i want it to continue streaming until the stop loss price, or the profit take price, or the sell time threshold is hit. I only want to short the stock once, and will always sell the stock by the sell time no matter what.
-    
+        - everything else is using the schwabdev library    
 
 
 
