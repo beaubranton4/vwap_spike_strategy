@@ -191,8 +191,8 @@ def place_bracket_order(client: Client, symbol: str, quantity: int, instruction:
         # Add cancel time if specified
         if cancel_time_et:
             order["duration"] = "GOOD_TILL_CANCEL"  # Changed from DAY
-            order["cancelTime"] = cancel_datetime_utc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
-            logger.info(f"Added cancel time to order: {order['cancelTime']}")
+            # order["cancelTime"] = cancel_datetime_utc.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+            # logger.info(f"Added cancel time to order: {order['cancelTime']}")
         
         logger.info("Placing order with structure:")
         logger.info(json.dumps(order, indent=2))
@@ -238,7 +238,7 @@ def main():
     target_price = 100.00
 
     # Set cancel time as string in HH:MM format
-    cancel_time_et = '22:30'  # Will cancel at 10:04 PM ET
+    cancel_time_et = '00:05'  # Will cancel at 10:04 PM ET
 
     try:
         order_status = place_bracket_order(

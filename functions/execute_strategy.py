@@ -730,7 +730,7 @@ class ExecuteStrategy:
                             break
 
             # Monitoring loop - runs from buy threshold until 5 min before market close
-            five_min_before_close = (self.strategy_end_time - timedelta(minutes=15)).time()
+            five_min_before_close = (self.strategy_end_time - timedelta(minutes=30)).time()
             last_status_time = datetime.now(self.et_timezone)
 
             while (self.is_running and 
@@ -750,8 +750,9 @@ class ExecuteStrategy:
                 if self.use_mock_data:
                     mock_message = self.streamer.generate_mock_message()
                     self.handle_stream_message(mock_message)
-                
-                sleep(3600)  # Sleep for 1 minute
+                    sleep(1)
+                else:
+                    sleep(600)  # Sleep for 10 minutes
 
             # End of day loop - runs final 5 minutes until market close
             while (self.is_running and 
