@@ -1,26 +1,20 @@
-- BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
+
     -----------------------------------------------------------------------------------------------------
-    - Need to think through how we are not logging active and closed positions anymore. does that matter?
-    - Update strategy to sell at end of trading day
-        - Could Use 'MOC' order as third child order continue using current check_end_of_day_condition?
-        - Using 'MOC' i will need to cancel previous orders (using cancel_order in api calls) if not filled, and cancel MOC if bracket is filled or build other checking logic.
-        -Easiest to just use current strategy (potentially add cancel for bracket prior to eod close)
-    - See if i want to use stop price or limit price or if i want to use percentage of entry price for bracket order
-    - Breakup end of day logic into seperate function and run at seperate time? Save file somewhere?
+    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+
     -----------------------------------------------------------------------------------------------------
-    - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
-    -----------------------------------------------------------------------------------------------------
-    
     - Automate script so that it runs 24/7
+    - Update main to not run on day's the market is closed
+
+    -----------------------------------------------------------------------------------------------------
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
     
-
-------        
+    -----------------------------------------------------------------------------------------------------
         
 
 
 - OTHER TO-DO's
-    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    
     - Incorporate hard to borrow data into screener
         - Also add in trading fees so i can truly understand performance
     - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.

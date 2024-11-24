@@ -367,6 +367,8 @@ class ExecuteStrategy:
                 
                 # Calculate order details
                 limit_price = max(symbol_data['Target Entry'], price)
+                stop_price = symbol_data['Stop Price']
+                target_price = symbol_data['Target Price']
                 quantity = int(symbol_data['Shares'])
                 order_value = limit_price * quantity
                 
@@ -396,15 +398,15 @@ class ExecuteStrategy:
                         #REAL STREAM BUT FAKE ORDER 
                         # logger.info(f"✅ JUST TESTING: Order successfully placed and confirmed")
                         # self.active_short_positions[symbol] = {
-                        #     'entry_price': price,  # Store entry price
+                        #     'entry_price': limit_price,  # Store entry price
                         #     'trade_time': current_time.strftime('%I:%M%p ET')
 
                         #PLACE ORDER
-                        order_result = place_real_order(self.client, symbol, quantity, instruction='SELL_SHORT' , order_type='LIMIT', price=limit_price)                       
+                        order_result = place_bracket_order(self.client, symbol, quantity, instruction='SELL_SHORT' , order_type='LIMIT', price=limit_price, stop_price=stop_price, target_price=target_price)                       
                         if order_result != 'REJECTED':
                             logger.info(f"✅ Order successfully placed w status: {order_result}")
                             self.active_short_positions[symbol] = {
-                                'entry_price': price,  # Store entry price
+                                'entry_price': limit_price,  # Store entry price
                                 'trade_time': current_time.strftime('%I:%M%p ET')  # Store trade time in desired format
                             }
                             order_success = True
@@ -415,7 +417,7 @@ class ExecuteStrategy:
                             self.add_trading_event(
                                 timestamp=current_time,
                                 symbol=symbol,
-                                price=price,
+                                price=limit_price,
                                 quantity=quantity,
                                 order_value=order_value,
                                 event_type='SHORT_REJECTED - REMOVE FROM WATCHLIST',
@@ -428,7 +430,7 @@ class ExecuteStrategy:
                 else:
                     logger.info(f"✅ Mock data mode: Order would have been placed")
                     self.active_short_positions[symbol] = {
-                        'entry_price': price,  # Store entry price
+                        'entry_price': limit_price,  # Store entry price
                         'trade_time': current_time.strftime('%I:%M%p ET')  # Store trade time in desired format
                     }
                     order_success = True
@@ -438,11 +440,11 @@ class ExecuteStrategy:
                     self.add_trading_event(
                         timestamp=current_time,
                         symbol=symbol,
-                        price=price,
+                        price=limit_price,
                         quantity=quantity,
                         order_value=order_value,
                         event_type='SHORT_SIGNAL',
-                        details=f"Price ${price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f} | " +
+                        details=f"Price ${limit_price:.2f} crossed above Target Entry ${symbol_data['Target Entry']:.2f} | " +
                                 f"Order: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}"
                     )
                     
@@ -601,7 +603,7 @@ class ExecuteStrategy:
                                 logger.error(f"❌ Failed to cover short position: {order_result}")
                             # END OF PLACE ORDER
                         else:
-                            logger.warning(f"No matching short position found for {symbol} with quantity {quantity}")
+                            logger.warning(f"EOD - No matching short position found for {symbol} with quantity {quantity}")
                     else:
                         logger.info(f"Order successfully placed for {symbol}: ${current_price:.2f} | Entry: ${entry_price:.2f} | ⏰ END OF DAY CLOSE")
                         order_success = True
@@ -729,13 +731,13 @@ class ExecuteStrategy:
                             self.is_running = False
                             break
 
-            # Monitoring loop - runs from buy threshold until 5 min before market close
-            five_min_before_close = (self.strategy_end_time - timedelta(minutes=30)).time()
+            # Monitoring loop - runs from buy threshold until 15 min before market close
+            start_end_of_day_monitoring = (self.strategy_end_time - timedelta(minutes=15)).time()
             last_status_time = datetime.now(self.et_timezone)
 
             while (self.is_running and 
                    self.get_current_time().time() >= BUY_TIME_THRESHOLD[0] and 
-                   self.get_current_time().time() < five_min_before_close):
+                   self.get_current_time().time() < start_end_of_day_monitoring):
                 
                 # Print status update every hour
                 current_time = datetime.now()
@@ -750,13 +752,12 @@ class ExecuteStrategy:
                 if self.use_mock_data:
                     mock_message = self.streamer.generate_mock_message()
                     self.handle_stream_message(mock_message)
-                    sleep(1)
                 else:
                     sleep(600)  # Sleep for 10 minutes
 
             # End of day loop - runs final 5 minutes until market close
             while (self.is_running and 
-                   self.get_current_time().time() >= five_min_before_close and 
+                   self.get_current_time().time() >= start_end_of_day_monitoring and 
                    self.get_current_time().time() < self.strategy_end_time.time()):
                 
                 if self.use_mock_data:
