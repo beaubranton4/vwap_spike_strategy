@@ -48,7 +48,7 @@ VOL_SPIKE_THRESHOLD = [5]  # Abnormally high volume that stands out on a chart
 PRICE_SPIKE_THRESHOLD = [0.05]  # Must move the price x%
 TIME_SIG_THRESHOLD = [time(hour=12, minute=30, second=0)]
 BUY_TIME_THRESHOLD = [time(hour=10, minute=30, second=0)]
-SELL_TIME_THRESHOLD = [time(hour=15, minute=30, second=0)]
+SELL_TIME_THRESHOLD = [time(hour=16, minute=0, second=0)]
 
 ####################################### CREATE VARIABLES FOR INPUT STRATEGY TO TEST ##########################
 bet_size_index = 0

@@ -1,25 +1,29 @@
 - BUILD STREAMER BOT THAT CHECKS THE PRICES OF ALL THESE STOCKS AND THEN BUYS THEM IF THEY MEET THE CRITERIA
-    
-    - Check backtest to see when we actually exit the position eod. 
-    - Use 'MOC' order for end of day or do i just continue using current check_end_of_day_condition?
-        - Using 'MOC' i will need to cancel previous orders if not filled, or build other checking logic.
+    -----------------------------------------------------------------------------------------------------
+    - Need to think through how we are not logging active and closed positions anymore. does that matter?
+    - Update strategy to sell at end of trading day
+        - Could Use 'MOC' order as third child order continue using current check_end_of_day_condition?
+        - Using 'MOC' i will need to cancel previous orders (using cancel_order in api calls) if not filled, and cancel MOC if bracket is filled or build other checking logic.
+        -Easiest to just use current strategy (potentially add cancel for bracket prior to eod close)
     - See if i want to use stop price or limit price or if i want to use percentage of entry price for bracket order
-    - Implement Bracket order and MOC (or stick with current method) in execution
-    - Make all orders "ALL OR NONE"
+    - Breakup end of day logic into seperate function and run at seperate time? Save file somewhere?
+    -----------------------------------------------------------------------------------------------------
     - Fix add trading event function so that it adds the event to the dataframe. only used in premarket screener functions now
-    - Incorporate hard to borrow data into screener
-        - Also add in trading fees so i can truly understand performance
-    - Connect to papermoney account?
-    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
+    -----------------------------------------------------------------------------------------------------
+    
     - Automate script so that it runs 24/7
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
-    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    
 
 ------        
         
 
 
 - OTHER TO-DO's
+    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    - Incorporate hard to borrow data into screener
+        - Also add in trading fees so i can truly understand performance
+    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
     - Update backtest to only use current strategy and use schwabdev API for prices
         - also fix so that we don't incorporate current day's data in backtest (current day data is not complete with full pre-market data)
     - Async functions and using another streamer for account positions.
