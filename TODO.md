@@ -17,6 +17,7 @@
 - OTHER TO-DO's
     
     - Incorporate hard to borrow data into screener (premarket or daily screener?)
+    - Refresh ticker_list with new fresh data.
     -Instead of relying on trading events i can build a completely seperate function that checks orders to calculate performance
     closed_positions dataframes.
     - Update backtest to only use current strategy and use schwabdev API for prices

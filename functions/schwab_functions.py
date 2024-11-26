@@ -454,7 +454,7 @@ def place_bracket_order(client: Client, symbol: str, quantity: int, instruction:
             logger.info(f"Added limit price: {price}")
         
         logger.info("Placing order with structure:")
-        logger.info(json.dumps(order, indent=2))
+        # logger.info(json.dumps(order, indent=2))
         
         # Place the order
         order_response = client.order_place(account_hash, order)

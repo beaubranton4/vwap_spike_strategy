@@ -201,37 +201,73 @@ def place_bracket_order(client: Client, symbol: str, quantity: int, instruction:
         logger.error(f"Traceback: {traceback.format_exc()}")
         return 'ERROR_WITH_API_CALL'
 
-def main():
-    # Initialize client
-    client = get_authenticated_client()
-    check_position_match(client, 'OPEN', 618, False)
-    # Order parameters
-    symbol = 'CRL'
-    quantity = 2
-    limit_price = 195.90
-    stop_price = 199.00
-    target_price = 100.00
-
-    # Set cancel time as string in HH:MM format
-    # cancel_time_et = '00:05'  # Will cancel at 10:04 PM ET
-
+def is_market_date(schedule: pd.DataFrame, check_date: datetime = None) -> bool:
+    """
+    Check if a given date is in the market schedule
+    
+    Args:
+        schedule: DataFrame with market schedule
+        check_date: datetime object in ET to check (defaults to current ET time)
+        
+    Returns:
+        bool: True if date is in schedule, False otherwise
+    """
     try:
-        order_status = place_bracket_order(
-            client=client, 
-            symbol=symbol, 
-            quantity=quantity, 
-            instruction='SELL_SHORT', 
-            order_type='LIMIT', 
-            price=limit_price, 
-            stop_price=stop_price, 
-            target_price=target_price
-        )
-        logger.info(f"Order status: {order_status}")
+        # If no date provided, use current ET time
+        if check_date is None:
+            et_tz = pytz.timezone('US/Eastern')
+            check_date = datetime.now(et_tz)
+            
+        # Convert check_date to date only for comparison
+        check_date = check_date.date()
+        
+        # Convert schedule index to date for comparison
+        schedule_dates = schedule.index.date
+        
+        # Check if date exists in schedule
+        is_trading_day = check_date in schedule_dates
+        
+        logger.info(f"Date check for {check_date}: {'Trading day' if is_trading_day else 'Non-trading day'}")
+        return is_trading_day
+        
     except Exception as e:
-        logger.error(f"❌ Error during order placement: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
+        logger.error(f"Error checking market date: {str(e)}")
+        logger.error(traceback.format_exc())
+        return False
 
-    print(f"Order status: {order_status}")
+def main():
+    print(len(schedule))
+    print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
+    # Initialize client
+    # client = get_authenticated_client()
+    # check_position_match(client, 'OPEN', 618, False)
+    # # Order parameters
+    # symbol = 'CRL'
+    # quantity = 2
+    # limit_price = 195.90
+    # stop_price = 199.00
+    # target_price = 100.00
+
+    # # Set cancel time as string in HH:MM format
+    # # cancel_time_et = '00:05'  # Will cancel at 10:04 PM ET
+
+    # try:
+    #     order_status = place_bracket_order(
+    #         client=client, 
+    #         symbol=symbol, 
+    #         quantity=quantity, 
+    #         instruction='SELL_SHORT', 
+    #         order_type='LIMIT', 
+    #         price=limit_price, 
+    #         stop_price=stop_price, 
+    #         target_price=target_price
+    #     )
+    #     logger.info(f"Order status: {order_status}")
+    # except Exception as e:
+    #     logger.error(f"❌ Error during order placement: {str(e)}")
+    #     logger.error(f"Traceback: {traceback.format_exc()}")
+
+    # print(f"Order status: {order_status}")
 
 if __name__ == "__main__":
     main()

@@ -367,8 +367,8 @@ class ExecuteStrategy:
                 
                 # Calculate order details
                 limit_price = max(symbol_data['Target Entry'], price)
-                stop_price = symbol_data['Stop Price']
-                target_price = symbol_data['Sell Price']
+                stop_price = round(symbol_data['Stop Price'], 2)
+                target_price = round(symbol_data['Sell Price'], 2)
                 quantity = int(symbol_data['Shares'])
                 order_value = limit_price * quantity
                 
@@ -629,7 +629,7 @@ class ExecuteStrategy:
         try:
 
             logger.info("Starting VWAP spike strategy execution...")
-            logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]} PT")
+            logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]} ET")
             self.df = df
             
             # Print initial stock list in a clean format
