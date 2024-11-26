@@ -9,3 +9,6 @@ backtest/backtest_results/
 archive/
 trade_log/
 screener/daily_screener_signals/
+*.pem
+auth/
+*.DS_Store
