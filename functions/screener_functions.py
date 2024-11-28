@@ -72,7 +72,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     
     # Initialize results DataFrame
     stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike',
-                                          'Previous Day Close','Signal Time', 'Shares', 'Stop Price', 'Sell Price'])
+                                          'Previous Day Close','Signal Time', 'Stop Price', 'Sell Price'])
     
     # Process tickers in chunks of 100
     CHUNK_SIZE = 100
