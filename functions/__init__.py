@@ -20,7 +20,8 @@ from .schwab_functions import (
     check_positions,
     check_position_match,
     get_all_positions,
-    check_order_status
+    check_order_status,
+    close_matched_positions
 )
 
 # Importing authentication functions
@@ -58,6 +59,8 @@ __all__ = [
     'check_position_match',
     'get_all_positions',
     'check_order_status',
+    'close_matched_positions',
+    
     # Authentication functions
     'get_authenticated_client',   
     

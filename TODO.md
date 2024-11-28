@@ -1,6 +1,6 @@
 
     -----------------------------------------------------------------------------------------------------
-    - Fix next_business_day function so that it returns the correct next business day. 11/27 returns 11/28 but that's thanksgiving.
+
     - Create function to close all open positions at the end of the day.
         - use same premarket screener file and check position match. if match, then close. No need to use active_short_positions or closed_positions. no need to use the streamer. Create as own main function.
     -----------------------------------------------------------------------------------------------------

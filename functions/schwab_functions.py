@@ -13,6 +13,7 @@ from functools import lru_cache
 import time
 from functions import *
 from config import *
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -667,6 +668,48 @@ def check_position_match(client, target_symbol, target_quantity, short):
         return False
     
 
+def close_matched_positions(client: Client, df: pd.DataFrame) -> None:
+    """
+    Close short positions that match symbols in the premarket screener results.
+    
+    Args:
+        client: Authenticated Schwab client
+        df: DataFrame containing at least 'Ticker' and 'Shares' columns
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"Checking end of day positions to close...")
+    
+    for idx, row in df.iterrows():
+        try:
+            symbol = row['Ticker']
+            shares = round(float(row['Shares']))  # Round to nearest integer
+            
+            # Check if we have a matching short position
+            if check_position_match(client, symbol, shares, short=True):
+                
+                # Place buy to cover order
+                order_result = place_real_order(
+                    client=client,
+                    symbol=symbol,
+                    quantity=shares,
+                    instruction='BUY_TO_COVER',
+                    order_type='MARKET'
+                )
+                
+                if order_result != 'ERROR_WITH_API_CALL' and order_result != 'REJECTED':
+                    logger.info(f"✅ Order placed successfully for {symbol}. Status: {order_result}")
+                else:
+                    logger.error(f"❌ Failed to close position for {symbol}. Status: {order_result}")
+            else:
+                logger.info(f"No matching position found for {symbol}")
+                
+            # time.sleep(0.1)  # Rate limiting
+            
+        except Exception as e:
+            logger.error(f"Error processing {symbol}: {str(e)}")
+            logger.error(traceback.format_exc())
+            continue
+
 #SCHWAB API DOCUMENTATION FOR ORDERS
 # https://developer.schwab.com/docs/services/5b3323445b3323445b332344/operations/5b3323445b3323445b332345
 
@@ -895,3 +938,4 @@ xml: OrderedMap { "name": "childOrder", "wrapped": true }
 statusDescription	string
 }
 """
+
