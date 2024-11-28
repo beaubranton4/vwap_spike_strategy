@@ -96,10 +96,10 @@ def reduce_brightness():
     except Exception:
         pass  # Brightness control might not be available
 
-def print_resource_usage():
-    cpu_percent = psutil.cpu_percent()
-    memory_percent = psutil.virtual_memory().percent
-    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+# def print_resource_usage():
+#     cpu_percent = psutil.cpu_percent()
+#     memory_percent = psutil.virtual_memory().percent
+#     logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
 
 def is_market_date(schedule_input: pd.DataFrame, check_date: datetime = None) -> bool:
     """
@@ -158,7 +158,6 @@ def run_daily_screener():
             need_extended_hours_data=need_extended_hours_data,
             need_previous_close=need_previous_close,
             rolling_lookback=rolling_lookback,
-            ALLOCATION=ALLOCATION,
             price_spike_thresh_index=price_spike_thresh_index,
             time_sig_thresh_index=time_sig_thresh_index,
             buy_time_threshold_index=buy_time_threshold_index,
@@ -363,8 +362,8 @@ def main():
     while True:
         try:
             scheduler.run_pending()
-            if datetime.now().minute == 0:
-                print_resource_usage()
+            # if datetime.now().minute == 0:
+            #     print_resource_usage()
             sys.stdout.flush()
             time_lib.sleep(0.1)
         except Exception as e:

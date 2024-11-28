@@ -43,7 +43,6 @@ def main():
         need_extended_hours_data=need_extended_hours_data,
         need_previous_close=need_previous_close,
         rolling_lookback=rolling_lookback,
-        ALLOCATION=ALLOCATION,
         price_spike_thresh_index=price_spike_thresh_index,
         time_sig_thresh_index=time_sig_thresh_index,
         buy_time_threshold_index=buy_time_threshold_index,
@@ -70,9 +69,9 @@ def main():
     # print(f"Found {len(premarket_screener_results)} potential trades after premarket screener")
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
-    premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
-    strategy = ExecuteStrategy(use_mock_data=False)
-    strategy.execute_vwap_spike_strategy(premarket_screener_results)
+    # premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
+    # strategy = ExecuteStrategy(use_mock_data=False)
+    # strategy.execute_vwap_spike_strategy(premarket_screener_results)
     
     
 if __name__ == "__main__":

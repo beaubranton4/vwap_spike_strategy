@@ -1,10 +1,7 @@
 
     -----------------------------------------------------------------------------------------------------
-
-    - Create function to close all open positions at the end of the day.
-        - use same premarket screener file and check position match. if match, then close. No need to use active_short_positions or closed_positions. no need to use the streamer. Create as own main function.
-    -----------------------------------------------------------------------------------------------------
     - Get screener working on VM
+        - Add Shares to purchase based on premarket screener results (or create as seperate function at end of daily screener)
         - May have to chunk the screener so that it doesn't run out of memory.
         - Try to upgrade instance size
         - Next ensure the execute_strategy.py doesn't run out of memory/cpu
@@ -24,7 +21,8 @@
     
 
     -----------------------------------------------------------------------------------------------------
-    - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
+    - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py).
+    - Allocation based on cash balance and number of positions in the screener.
     
 
 
