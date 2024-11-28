@@ -14,6 +14,10 @@
     
     - Align project on VM and project on local machine:
         - auth folder, .env file, data folder, csv outputs and logs (all these should be on VM but don't need on github)
+
+        ------------------------------------------------------------------------------------------------------
+    - Ensure that running 24/7 won't create any issues. Logging? etc.? should i really run 24/7? or should i pause for non market days/hours etc.
+
     
     -----------------------------------------------------------------------------------------------------
     - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET

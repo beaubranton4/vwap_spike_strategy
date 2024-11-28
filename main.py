@@ -77,6 +77,30 @@ logger = setup_logging()
 # Create a lock instance
 job_lock = threading.Lock()
 
+def print_test_message():
+    logger.info("Test message: Bot is still running!")
+
+def setup_power_management():
+    """Configure power management settings for Mac"""
+    try:
+        # Instead of using pmset directly, create a caffeinate process
+        subprocess.Popen(['caffeinate', '-i'])  # Prevent idle sleep
+        
+        logger.info("Power management settings configured using caffeinate")
+    except Exception as e:
+        logger.error(f"Failed to configure power settings: {e}")
+
+def reduce_brightness():
+    try:
+        subprocess.run(['brightness', '0.3'])  # Set to 30%
+    except Exception:
+        pass  # Brightness control might not be available
+
+def print_resource_usage():
+    cpu_percent = psutil.cpu_percent()
+    memory_percent = psutil.virtual_memory().percent
+    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+
 def is_market_date(schedule_input: pd.DataFrame, check_date: datetime = None) -> bool:
     """
     Check if a given date is in the market schedule
@@ -117,10 +141,6 @@ def run_daily_screener():
         # Check yesterday's date
         et_tz = pytz.timezone('US/Eastern')
         yesterday = datetime.now(et_tz) - timedelta(days=1)
-        
-        if not is_market_date(market_schedule, yesterday):
-            logger.info("Yesterday was not a trading day. Skipping daily screener.")
-            return
 
         client = get_authenticated_client()
         logger.info("Starting daily screener...")
@@ -147,7 +167,6 @@ def run_daily_screener():
             stop_index=stop_index,
             target_index=target_index
     )
-        # print(f"Found {len(results)} potential trades")
         
         # Save results
         # save_dir = Path('screener/daily_screener_signals')
@@ -164,10 +183,6 @@ def run_daily_screener():
 def schedule_premarket_screener():
     """Run 1 minute before market open"""
     try:
-        today = datetime.now(pytz.timezone('US/Eastern'))
-        if not is_market_date(market_schedule, today):
-            logger.info("Market closed today. Skipping pre-market screener.")
-            return
             
         logger.info("Starting pre-market screener...")
         
@@ -200,10 +215,6 @@ def schedule_premarket_screener():
 def run_trading_strategy():
     """Run at market open"""
     try:
-        today = datetime.now(pytz.timezone('US/Eastern'))
-        if not is_market_date(market_schedule, today):
-            logger.info("Market closed today. Skipping trading strategy.")
-            return
             
         logger.info("Starting trading strategy...")
         
@@ -225,30 +236,6 @@ def run_trading_strategy():
     except Exception as e:
         logger.error(f"Trading strategy failed: {str(e)}", exc_info=True)
 
-def print_test_message():
-    logger.info("Test message: Bot is still running!")
-
-def setup_power_management():
-    """Configure power management settings for Mac"""
-    try:
-        # Instead of using pmset directly, create a caffeinate process
-        subprocess.Popen(['caffeinate', '-i'])  # Prevent idle sleep
-        
-        logger.info("Power management settings configured using caffeinate")
-    except Exception as e:
-        logger.error(f"Failed to configure power settings: {e}")
-
-def reduce_brightness():
-    try:
-        subprocess.run(['brightness', '0.3'])  # Set to 30%
-    except Exception:
-        pass  # Brightness control might not be available
-
-def print_resource_usage():
-    cpu_percent = psutil.cpu_percent()
-    memory_percent = psutil.virtual_memory().percent
-    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
-
 def refresh_market_schedule():
     """Refresh the market schedule at midnight ET"""
     try:
@@ -266,6 +253,27 @@ def refresh_market_schedule():
         logger.error(f"Error refreshing market schedule: {str(e)}")
         logger.error(traceback.format_exc())
 
+def close_end_of_day_positions():
+    """Close all positions at market close"""
+    try:
+        today = datetime.now(pytz.timezone('US/Eastern'))
+            
+        logger.info("Starting end-of-day position closing...")
+        
+        # Load today's filtered results
+        premarket_screener_df = Path('screener/premarket_screener_signals') / f"{today.strftime('%Y-%m-%d')}.csv"            
+        positions_to_close = pd.read_csv(premarket_screener_df)
+        
+        # Initialize client and close positions
+        client = get_authenticated_client()
+        close_matched_positions(client, positions_to_close)
+        
+        logger.info("End-of-day position closing completed.")
+        
+    except Exception as e:
+        logger.error(f"End-of-day position closing failed: {str(e)}")
+        logger.error(traceback.format_exc())
+
 def main():
     et_tz = pytz.timezone('US/Eastern')
     
@@ -273,13 +281,12 @@ def main():
         setup_power_management()
     
     def schedule_in_et(job_time, job_func):
-        """Schedule a job using Eastern Time"""
+        """Schedule a job using Eastern Time with second precision"""
         def job_wrapper():
             try:
-                current_et_time = datetime.now(et_tz).strftime("%H:%M")
-                current_et_seconds = datetime.now(et_tz).second
+                current_et_time = datetime.now(et_tz).strftime("%H:%M:%S")
                 
-                if current_et_time == job_time and current_et_seconds < 5:
+                if current_et_time == job_time:
                     logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
                     with job_lock:
                         logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
@@ -289,7 +296,7 @@ def main():
                 logger.error(f"Error in job {job_func.__name__}: {str(e)}")
                 logger.error(traceback.format_exc())
 
-        return scheduler.every(5).seconds.do(job_wrapper)
+        return scheduler.every(1).seconds.do(job_wrapper)
     
     # Initialize market_schedule with retry
     max_retries = 3
@@ -309,29 +316,47 @@ def main():
             retry_count += 1
             time_lib.sleep(5)
     
-    # Schedule jobs
+    # Check if today is a market date
+    today = datetime.now(et_tz)
+    if not is_market_date(market_schedule, today):
+        logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day. No jobs will be scheduled.")
+        while True:     
+            # Optionally log that the bot is still running
+            if datetime.now().minute == 0:  # Log once per hour
+                logger.info("Bot is running - Waiting for next trading day")
+            time_lib.sleep(60)  # Sleep for 1 minute
+        return
+
+    # If it is a market day, schedule all jobs
     screener_time = "00:01"
     
     if len(market_schedule) > 0:
         market_open = market_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-        premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M")
-        market_open_time = market_open.strftime("%H:%M")
+        market_close = market_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
+        
+        # Calculate times 20 seconds before market events
+        premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M:%S")
+        market_open_time = (market_open - timedelta(seconds=20)).strftime("%H:%M:%S")
+        market_close_time = (market_close - timedelta(seconds=20)).strftime("%H:%M:%S")
     else:
         logger.warning("Using default market times due to schedule initialization failure")
-        premarket_time = "09:29"
-        market_open_time = "09:30"
+        premarket_time = "09:29:00"
+        market_open_time = "09:29:40"  # 20 seconds before 9:30
+        market_close_time = "15:59:40"  # 20 seconds before 16:00
     
-    # Schedule all jobs
+    # Schedule all jobs with second precision
     schedule_in_et("00:00", refresh_market_schedule)
     schedule_in_et(screener_time, run_daily_screener)
     schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
+    schedule_in_et(market_close_time, close_end_of_day_positions)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
     logger.info(f"- Schedule Refresh: 00:00 ET")
     logger.info(f"- Daily Screener: {screener_time} ET")
     logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")
+    logger.info(f"- Position Closing: {market_close_time} ET")
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     
     # Main loop with error handling
