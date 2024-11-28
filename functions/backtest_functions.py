@@ -6,17 +6,35 @@ import pandas_market_calendars as mcal
 
 ############################################## ALL FUNCTIONS ########################################################
 
-def next_business_day(today):
-    next_day = today + timedelta(days=1)
-    en = datetime.now()
-    st = en - timedelta(days=20)
-    en_extended = en + timedelta(days=10)
+def next_business_day(current_date):
+    """
+    Find the next business day in NYSE calendar after the given date.
+    
+    Args:
+        current_date: datetime object or date
+    Returns:
+        date: Next business day
+    """
+    # Convert to date if datetime
+    if isinstance(current_date, datetime):
+        current_date = current_date.date()
+    
+    # Get NYSE calendar for a reasonable date range
     nyse = mcal.get_calendar('NYSE')
-    nyse_days = nyse.valid_days(start_date=st, end_date=en_extended)
+    nyse_days = nyse.valid_days(
+        start_date=current_date - timedelta(days=5),
+        end_date=current_date + timedelta(days=5)
+    )
+    
+    # Convert to list of dates
     valid_trading_days = pd.Series(nyse_days).dt.date
-    while next_day.weekday() in [5,6] or next_day.weekday() not in valid_trading_days:
-        next_day += timedelta(days=1)
-    return next_day
+    
+    # Find the next valid trading day
+    for trading_day in valid_trading_days:
+        if trading_day > current_date:
+            return trading_day
+            
+    return None  # Return None if no next trading day found in range
 
 ######################################## GET BUY/SELL SIGNAL FUNCTION ##################################################
 

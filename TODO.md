@@ -1,17 +1,28 @@
 
     -----------------------------------------------------------------------------------------------------
-    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
-
+    - Fix next_business_day function so that it returns the correct next business day. 11/27 returns 11/28 but that's thanksgiving.
+    - Create function to close all open positions at the end of the day.
+        - use same premarket screener file and check position match. if match, then close. No need to use active_short_positions or closed_positions. no need to use the streamer. Create as own main function.
     -----------------------------------------------------------------------------------------------------
-    - Automate script so that it runs 24/7
-    - Update main to not run on day's the market is closed
+    - Get screener working on VM
+        - May have to chunk the screener so that it doesn't run out of memory.
+        - Try to upgrade instance size
+        - Next ensure the execute_strategy.py doesn't run out of memory/cpu
+        - Next ensure the close all open positions at the end of the day function doesn't run out of memory/cpu
+        - Next ensure the main.py doesn't run out of memory/cpu
+    ------------------------------------------------------------------------------------------------------
+    
+    - Align project on VM and project on local machine:
+        - auth folder, .env file, data folder, csv outputs and logs (all these should be on VM but don't need on github)
+    
+    -----------------------------------------------------------------------------------------------------
+    - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    
 
     -----------------------------------------------------------------------------------------------------
     - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py)
     
-    -----------------------------------------------------------------------------------------------------
-    - Might need to build failsafe if the program crashes mid-stream. Will need to save the state of the streamer and be able to resume from there.
-        - Instead of failsafe, i can just create a new end of day check that closes any positions that are still open at the end of the day that were placed today by the strategy. Don't rely on the active_short_positions and closed_positions. alternatively i can always just close all open positions at the end of the day. Don't have other trades in this account at all.
+
 
 
 - OTHER TO-DO's
@@ -20,6 +31,7 @@
     - Refresh ticker_list with new fresh data.
     -Instead of relying on trading events i can build a completely seperate function that checks orders to calculate performance
     closed_positions dataframes.
+    - Create function to cleanup files taking memory and store them somewhere. or manually do this.
     - Update backtest to only use current strategy and use schwabdev API for prices
         - also fix so that we don't incorporate current day's data in backtest (current day data is not complete with full pre-market data)
         - Turn backtest into a script/function. The backtest_functions should be a class and have all the global variables be state variables that get created upon initialization: ENTRY_PRICE

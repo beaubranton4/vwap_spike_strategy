@@ -159,11 +159,9 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
             # Calculate VWAP metrics
             stahks['VWAP_Row'] = stahks['Volume']*((stahks['High']+stahks['Low']+stahks['Close'])/3)
-            stahks['Cum_VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum')
-            stahks['Cum_Volume'] = stahks.groupby('Date')['Volume'].transform('cumsum')
-            stahks['VWAP'] = stahks['Cum_VWAP']/stahks['Cum_Volume']
-            stahks['VWAP_STD_1'] = stahks['VWAP'] - stahks.groupby('Date')['VWAP'].transform('std')
-            stahks['Color_Bar'] = np.where(stahks['Open']<=stahks['Close'], 'Green', 'Red')
+            stahks['VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum')/stahks.groupby('Date')['Volume'].transform('cumsum')
+            # stahks['VWAP_STD_1'] = stahks['VWAP'] - stahks.groupby('Date')['VWAP'].transform('std')
+            # stahks['Color_Bar'] = np.where(stahks['Open']<=stahks['Close'], 'Green', 'Red')
             stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
 
             stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
@@ -176,7 +174,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
             
     RESULT_INDEXER = 0
     COMBO_INDEXER = 0
-    stocks_to_trade = pd.DataFrame(columns=['Strategy','Date','Ticker','Target Entry','Volume Spike','Price Spike','Previous Day Close','Signal Time', 'Shares', 'Stop Price', 'Sell Price', 'Backup Sell Time'])
+    stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike','Previous Day Close','Signal Time', 'Shares', 'Stop Price', 'Sell Price'])
 
     for strategy in combinations:
         print(strategy,(datetime.now() - start_clock))
@@ -193,8 +191,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
             before_time = np.where(stockies[ticker]['Time'] <= strategy[time_sig_thresh_index], 'True','False')
             stockies[ticker]['before_time'] = before_time 
             
-            green_bar = np.where(stockies[ticker]['Color_Bar'] == 'Green', 'True','False')
-            stockies[ticker]['green_bar'] = green_bar
+            # green_bar = np.where(stockies[ticker]['Color_Bar'] == 'Green', 'True','False')
+            # stockies[ticker]['green_bar'] = green_bar
             
             vol_spike_sig = np.where(stockies[ticker]['Volume'] > strategy[vol_spike_thresh_index] * stockies[ticker]['10_Day_Avg_Vol'],'True','False')
             stockies[ticker]['vol_spike_sig'] = vol_spike_sig
@@ -235,19 +233,16 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                 if (row['Close']<=TARGET_ENTRY_PRICE) & (row['Day_Close'] == True) & (row['Date'] == TEMP_SIGNAL_DAY):
                     print('Got in thur')
                     stocks_to_trade.at[RESULT_INDEXER,'Previous Day Close'] = row['Close']
-                    stocks_to_trade.at[RESULT_INDEXER,'Strategy'] = COMBO_INDEXER
                     stocks_to_trade.at[RESULT_INDEXER,'Ticker'] = row['Ticker']
                     stocks_to_trade.at[RESULT_INDEXER,'Shares'] = ACCOUNT_SIZE*ALLOCATION/TARGET_ENTRY_PRICE
                     stocks_to_trade.at[RESULT_INDEXER,'Target Entry'] = TARGET_ENTRY_PRICE
-                    stocks_to_trade.at[RESULT_INDEXER,'Date'] = row['Date']
                     stocks_to_trade.at[RESULT_INDEXER,'Signal Time'] = TEMP_SIGNAL_TIME
                     stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                     stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
                     stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = YESTERDAY_HIGH
                     stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                     stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
-                    stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]
-                    
+                    stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]                 
                     stop_price = TARGET_ENTRY_PRICE + (TARGET_ENTRY_PRICE * strategy[stop_index])
                     sell_price = TARGET_ENTRY_PRICE - (TARGET_ENTRY_PRICE * strategy[target_index])
                     stocks_to_trade.at[RESULT_INDEXER,'Stop Price'] = stop_price
@@ -256,10 +251,10 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                     RESULT_INDEXER +=1                
         COMBO_INDEXER +=1 
         
-    stocks_to_trade = pd.merge(stocks_to_trade,ticker_list[['Ticker','Market Cap','Sector','Float']],on = 'Ticker', how = 'left')  
-    stocks_to_trade['Market Capitalization'] = (stocks_to_trade['Market Cap'].astype(float)/1000000).astype(str) + 'M'
-    stocks_to_trade['Shares Float'] = (stocks_to_trade['Float'].astype(float)/1000000).astype(str) + 'M'
-    stocks_to_trade.sort_values(by = 'Market Capitalization',ascending = True,inplace = True)
+    # stocks_to_trade = pd.merge(stocks_to_trade,ticker_list[['Ticker','Market Cap','Sector','Float']],on = 'Ticker', how = 'left')  
+    # stocks_to_trade['Market Capitalization'] = (stocks_to_trade['Market Cap'].astype(float)/1000000).astype(str) + 'M'
+    # stocks_to_trade['Shares Float'] = (stocks_to_trade['Float'].astype(float)/1000000).astype(str) + 'M'
+    # stocks_to_trade.sort_values(by = 'Market Capitalization',ascending = True,inplace = True)
     
     output_date = next_business_day(day_of_backtest.date())
     output_file_path = 'screener/daily_screener_signals/' + str(output_date) + '.csv'

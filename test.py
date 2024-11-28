@@ -236,8 +236,10 @@ def is_market_date(schedule: pd.DataFrame, check_date: datetime = None) -> bool:
         return False
 
 def main():
-    print(len(schedule))
-    print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
+    # print(len(schedule))
+    next_biz_date = next_business_day(datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1))
+    print(next_biz_date)
+    # print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
     # Initialize client
     # client = get_authenticated_client()
     # check_position_match(client, 'OPEN', 618, False)

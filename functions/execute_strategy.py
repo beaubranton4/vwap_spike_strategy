@@ -627,7 +627,6 @@ class ExecuteStrategy:
     def execute_vwap_spike_strategy(self, df: pd.DataFrame) -> None:
         """Execute the VWAP spike strategy"""
         try:
-
             logger.info("Starting VWAP spike strategy execution...")
             logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]} ET")
             self.df = df
@@ -668,7 +667,6 @@ class ExecuteStrategy:
             logger.info(f"Strategy end: {self.strategy_end_time.strftime('%H:%M:%S')} ET")
             logger.info("="*50 + "\n")
         
-            
             # Initialize new stream
             if not self.use_mock_data:
                 self.streamer = self.client.stream
@@ -697,6 +695,9 @@ class ExecuteStrategy:
                         self.streamer = self.client.stream
                     else:
                         raise Exception("Failed to establish stream connection after all retries")
+
+            # Ensure all datetime objects are timezone-aware
+            last_status_time = datetime.now(self.et_timezone)
             
             # Main trading loop - runs until buy time threshold
             while self.is_running and self.get_current_time().time() < BUY_TIME_THRESHOLD[0]:
@@ -709,11 +710,23 @@ class ExecuteStrategy:
                         message = json.loads(self.message_buffer.pop(0))
                         self.process_message(message)
                     
+                    # Ensure current_time is timezone-aware
+                    current_time = datetime.now(self.et_timezone)
+
+                    # Check if it's time for a status update
+                    if (current_time - last_status_time).total_seconds() >= 600:
+                        logger.info("\n" + "="*50)
+                        logger.info(f"Status Update - {current_time.strftime('%H:%M:%S')} ET")
+                        logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
+                        logger.info(f"Closed Positions: {list(self.closed_positions)}")
+                        logger.info("="*50 + "\n")
+                        last_status_time = current_time
+                    
                     sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
                     
                 except Exception as e:
                     logger.error(f"Error in trading loop: {e}")
-                    # Only attempt reconnect if not using mock data
+                    # Reconnection logic
                     if not self.use_mock_data:
                         try:
                             logger.info("Attempting to reconnect stream...")
@@ -730,7 +743,7 @@ class ExecuteStrategy:
                             logger.error(f"Failed to reconnect stream: {reconnect_error}")
                             self.is_running = False
                             break
-
+            logger.info("Exiting main trading loop.. waiting for end of day monitoring")
             # Monitoring loop - runs from buy threshold until 15 min before market close
             start_end_of_day_monitoring = (self.strategy_end_time - timedelta(minutes=15)).time()
             last_status_time = datetime.now(self.et_timezone)
@@ -740,12 +753,13 @@ class ExecuteStrategy:
                    self.get_current_time().time() < start_end_of_day_monitoring):
                 
                 # Print status update every hour
-                current_time = datetime.now()
-                if (current_time.replace(tzinfo=self.et_timezone) - last_status_time).total_seconds() >= 3600:
+                current_time = datetime.now(self.et_timezone)
+                if (current_time - last_status_time).total_seconds() >= 3600:
                     logger.info("\n" + "="*50)
                     logger.info(f"Status Update - {current_time.strftime('%H:%M:%S')} ET")
                     logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
                     logger.info(f"Closed Positions: {list(self.closed_positions)}")
+                    logger.info(f"Waiting for end of day monitoring to close any remaining positions")
                     logger.info("="*50 + "\n")
                     last_status_time = current_time
 
@@ -754,7 +768,7 @@ class ExecuteStrategy:
                     self.handle_stream_message(mock_message)
                 else:
                     sleep(600)  # Sleep for 10 minutes
-
+            logger.info("Entering end of day monitoring loop.. closing any remaining positions at end of day")
             # End of day loop - runs final 5 minutes until market close
             while (self.is_running and 
                    self.get_current_time().time() >= start_end_of_day_monitoring and 

@@ -112,7 +112,7 @@ def is_market_date(schedule_input: pd.DataFrame, check_date: datetime = None) ->
         return False
 
 def run_daily_screener():
-    """Run at 8 PM ET after market close"""
+    """Run at 12:01 ET """
     try:
         # Check yesterday's date
         et_tz = pytz.timezone('US/Eastern')
@@ -128,7 +128,7 @@ def run_daily_screener():
             client=client,
             ticker_list=ticker_list,
             combinations=combinations,
-            day_of_backtest=datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1),
+            day_of_backtest=yesterday,
             period_type=period_type,
             period=period,
             frequency_type=frequency_type,
@@ -147,14 +147,14 @@ def run_daily_screener():
             stop_index=stop_index,
             target_index=target_index
     )
-        print(f"Found {len(results)} potential trades")
+        # print(f"Found {len(results)} potential trades")
         
         # Save results
-        save_dir = Path('screener/daily_screener_signals')
-        save_dir.mkdir(parents=True, exist_ok=True)
+        # save_dir = Path('screener/daily_screener_signals')
+        # save_dir.mkdir(parents=True, exist_ok=True)
         
-        date_to_trade = next_business_day(datetime.now())
-        results.to_csv(f'{save_dir}/{date_to_trade}.csv', index=False)
+        # date_to_trade = next_business_day(yesterday)
+        # results.to_csv(f'{save_dir}/{date_to_trade}.csv', index=False)
         
         logger.info(f"Daily screener completed. Found {len(results)} signals.")
         
@@ -188,9 +188,10 @@ def schedule_premarket_screener():
         filtered_results = run_premarket_screener(client, screener_results)
         
         # Save filtered results
-        premarket_save_dir = Path('screener/premarket_screener_signals')
-        premarket_save_dir.mkdir(parents=True, exist_ok=True)
-        filtered_results.to_csv(f'{premarket_save_dir}/{today}.csv', index=False)
+        # premarket_save_dir = Path('screener/premarket_screener_signals')
+        # premarket_save_dir.mkdir(parents=True, exist_ok=True)
+        # filtered_results.to_csv(f'{premarket_save_dir}/{today}.csv', index=False)
+        
         logger.info(f"Pre-market screener completed. {len(filtered_results)} symbols remaining.")
         
     except Exception as e:
