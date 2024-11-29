@@ -67,10 +67,10 @@ def main():
     # print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
     # Initialize client
     client = get_authenticated_client()
-    # check_position_match(client, 'OPEN', 618, False)
-    selected_date = '2024-11-27'
-    df = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
-    close_matched_positions(client, df)
+    check_position_match(client, 'OPEN', 618, False)
+    # selected_date = '2024-11-27'
+    # df = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
+    # close_matched_positions(client, df)
     # # Order parameters
     # symbol = 'CRL'
     # quantity = 2

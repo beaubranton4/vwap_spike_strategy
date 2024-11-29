@@ -327,11 +327,22 @@ def main():
         return
 
     # If it is a market day, schedule all jobs
-    screener_time = "00:01"
-    
+    screener_time = "03:30"
     if len(market_schedule) > 0:
-        market_open = market_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-        market_close = market_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
+        # Check if the DataFrame is empty
+        if market_schedule.empty:
+            logger.error("Market schedule is empty. Cannot proceed.")
+            return
+
+        # Use the index to filter for today's schedule
+        today_schedule = market_schedule[market_schedule.index.date == today.date()]
+
+        # Check if today_schedule is empty
+        if today_schedule.empty:
+            logger.warning(f"No market schedule found for today ({today.date()}).")
+        else:
+            market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+            market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
         
         # Calculate times 20 seconds before market events
         premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M:%S")
