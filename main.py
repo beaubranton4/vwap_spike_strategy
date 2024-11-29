@@ -14,6 +14,7 @@ import subprocess
 import psutil
 import sys
 import traceback
+import gc
 
 # Setup logging
 def setup_logging():
@@ -273,6 +274,64 @@ def close_end_of_day_positions():
         logger.error(f"End-of-day position closing failed: {str(e)}")
         logger.error(traceback.format_exc())
 
+def log_resource_usage():
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory_percent = psutil.virtual_memory().percent
+    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+
+def calculate_sleep_time(current_time, jobs):
+    """
+    Calculate the appropriate sleep time based on the next scheduled job
+    
+    Args:
+        current_time (datetime): Current time in ET
+        jobs (list): List of scheduled jobs
+        
+    Returns:
+        float: Number of seconds to sleep
+    """
+    if not jobs:
+        return 1.0  # Default sleep if no jobs
+    
+    # Get all next run times
+    next_run_times = []
+    et_tz = pytz.timezone('US/Eastern')
+    
+    for job in jobs:
+        try:
+            next_run = job.next_run
+            if next_run:
+                next_run = et_tz.localize(next_run)
+                next_run_times.append(next_run)
+        except Exception as e:
+            logger.debug(f"Error getting next run time for job: {e}")
+            continue
+    
+    if not next_run_times:
+        return 1.0
+    
+    # Constants
+    MAX_SLEEP = 300  # 5 minutes
+    BUFFER_TIME = 2  # Wake up 2 seconds before job
+    MIN_SLEEP = 0.1  # Minimum sleep time
+    
+    # Find earliest next run time
+    next_run = min(next_run_times)
+    
+    # Ensure current_time is timezone aware
+    if current_time.tzinfo is None:
+        current_time = et_tz.localize(current_time)
+    
+    time_until_next_job = (next_run - current_time).total_seconds()
+    
+    if time_until_next_job > BUFFER_TIME:
+        sleep_time = min(time_until_next_job - BUFFER_TIME, MAX_SLEEP)
+    else:
+        sleep_time = MIN_SLEEP
+    
+    logger.debug(f"Next job in {time_until_next_job:.1f}s, sleeping for {sleep_time:.1f}s")
+    return sleep_time
+
 def main():
     et_tz = pytz.timezone('US/Eastern')
     
@@ -285,7 +344,12 @@ def main():
             try:
                 current_et_time = datetime.now(et_tz).strftime("%H:%M:%S")
                 
-                if current_et_time == job_time:
+                # Add a window of acceptable execution time (e.g., within 2 seconds)
+                job_datetime = datetime.strptime(job_time, "%H:%M:%S")
+                current_datetime = datetime.strptime(current_et_time, "%H:%M:%S")
+                time_diff = abs((current_datetime - job_datetime).total_seconds())
+                
+                if time_diff <= 5:  # + or - 5 second window
                     logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
                     with job_lock:
                         logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
@@ -327,7 +391,7 @@ def main():
         return
 
     # If it is a market day, schedule all jobs
-    screener_time = "03:30"
+    screener_time = "10:24:20"
     if len(market_schedule) > 0:
         # Check if the DataFrame is empty
         if market_schedule.empty:
@@ -355,28 +419,46 @@ def main():
         market_close_time = "15:59:40"  # 20 seconds before 16:00
     
     # Schedule all jobs with second precision
-    schedule_in_et("00:00", refresh_market_schedule)
+    schedule_in_et("00:00:00", refresh_market_schedule)
     schedule_in_et(screener_time, run_daily_screener)
     schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
     schedule_in_et(market_close_time, close_end_of_day_positions)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
-    logger.info(f"- Schedule Refresh: 00:00 ET")
+    logger.info(f"- Schedule Refresh: 00:00:00 ET")
     logger.info(f"- Daily Screener: {screener_time} ET")
     logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")
     logger.info(f"- Position Closing: {market_close_time} ET")
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     
-    # Main loop with error handling
+    # Main loop with adaptive sleep
+    last_resource_log = time_lib.time()
+    resource_log_interval = 300  # Log resources every 5 minutes
+    
     while True:
         try:
+            # Ensure current_time is timezone aware
+            current_time = datetime.now(pytz.timezone('US/Eastern'))
+            
+            # Get all scheduled jobs
+            jobs = scheduler.get_jobs()
+            
+            # Calculate and execute sleep
+            sleep_time = calculate_sleep_time(current_time, jobs)
+            time_lib.sleep(sleep_time)
+            
+            # Run pending jobs
             scheduler.run_pending()
-            # if datetime.now().minute == 0:
-            #     print_resource_usage()
-            sys.stdout.flush()
-            time_lib.sleep(0.1)
+            
+            # Log resource usage periodically
+            current_time = time_lib.time()
+            if current_time - last_resource_log >= resource_log_interval:
+                log_resource_usage()
+                last_resource_log = current_time
+                gc.collect()  # Periodic garbage collection
+            
         except Exception as e:
             logger.error(f"Error in main loop: {str(e)}")
             logger.error(traceback.format_exc())
