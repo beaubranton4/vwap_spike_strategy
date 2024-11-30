@@ -3,8 +3,8 @@
     
     - Test VM runs autonomously 24/7 to ensure no issues
     - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
-    - Logging should be minimized
-    - Try to downsize VM instance and see if it still works
+        - Logging should be minimized
+    - Optimize VM costs:
         - Can try and schedule VM instance to only run weekdays.
         - Other tactics to scale down cost
     
@@ -13,20 +13,9 @@
     - Add allocation to premarket screener/daily screener based on number of postions
 
     ------------------------------------------------------------------------------------------------------
-    - Align project on VM and project on local machine:
-        - auth folder, .env file, data folder, csv outputs and logs (all these should be on VM but don't need on github)
 
-        ------------------------------------------------------------------------------------------------------
-    - Ensure that running 24/7 won't create any issues. Logging? etc.? should i really run 24/7? or should i pause for non market days/hours etc.
-
-    
-    -----------------------------------------------------------------------------------------------------
     - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
     
-
-    -----------------------------------------------------------------------------------------------------
-    - Change allocation to divide by 2 instead of full and currently /10. Don't want to risk it all at first. (line 78 of screener_functions.py).
-    - Allocation based on cash balance and number of positions in the screener.
     
 
 
