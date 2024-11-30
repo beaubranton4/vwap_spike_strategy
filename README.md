@@ -92,5 +92,5 @@ Run trading bot using tmux sessions (in start_trading_bot.sh):
    python3 vwap_spike_strategy/main.py
 
 Detach from tmux session using `Ctrl+b d` or `tmux detach-client -s trading_bot' from another terminal
-To view tmux session you can use: tmux attach-session -t session_name
-To stop tmux session: tmux kill-session -t session_name
+To view tmux session you can use: tmux attach-session -t trading_bot
+To stop tmux session: tmux kill-session -t trading_bot

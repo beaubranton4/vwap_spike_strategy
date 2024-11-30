@@ -427,10 +427,10 @@ def main():
 
     #FOR TESTING
     # if today.date() == datetime(2024, 11, 30).date():
-        # screener_time = "00:10:00"
-        # premarket_time = "09:29:00"
-        # market_open_time = "09:29:40"  # 20 seconds before 9:30
-        # market_close_time = "15:59:40"  # 20 seconds before 16:00
+    #     screener_time = "15:25:30"
+    #     premarket_time = "09:29:00"
+    #     market_open_time = "09:29:40"  # 20 seconds before 9:30
+    #     market_close_time = "15:59:40"  # 20 seconds before 16:00
 
     if len(market_schedule) > 0:
         # Check if the DataFrame is empty
@@ -460,14 +460,14 @@ def main():
         
     
     # Schedule all jobs with second precision
-    schedule_in_et("00:01:00", refresh_market_schedule)
+    schedule_in_et("00:05:00", refresh_market_schedule)
     schedule_in_et(screener_time, run_daily_screener)
     schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
     schedule_in_et(market_close_time, close_end_of_day_positions)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
-    logger.info(f"- Schedule Refresh: 00:01:00 ET")
+    logger.info(f"- Schedule Refresh: 00:05:00 ET")
     logger.info(f"- Daily Screener: {screener_time} ET")
     logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")

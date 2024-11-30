@@ -5,6 +5,10 @@
     - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
     - Logging should be minimized
     - Try to downsize VM instance and see if it still works
+        - Can try and schedule VM instance to only run weekdays.
+        - Other tactics to scale down cost
+    
+    
     ------------------------------------------------------------------------------------------------------
     - Add allocation to premarket screener/daily screener based on number of postions
 
