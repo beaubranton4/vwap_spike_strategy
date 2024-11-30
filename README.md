@@ -32,3 +32,65 @@ Let me break down this strategy's logic:
 - The backtest tracks various metrics including win rate, average profit percentage, and different types of exits (target hits, stops, time-based exits)
 
 This appears to be a mean reversion strategy that looks for explosive moves followed by pullbacks, with the expectation of a continuation move the next day.
+
+
+
+
+----
+
+VIRTUAL ENVIRONMENT SETUP
+
+1. Launch EC2 Instance (t3.micro or t3.small)
+
+2. Connect to Instance using .pem file (stores keys) 
+   - SSH command: `ssh -i [your-key.pem] ec2-user@[your-instance-ip]`
+   - Alternatively setup config file to store keys and use `ssh ec2-user@[your-instance-ip]`
+
+
+# Update system packages
+sudo yum update -y  # For Amazon Linux
+# OR
+sudo apt update && sudo apt upgrade -y  # For Ubuntu
+
+# Install Python and pip
+sudo yum install python3 python3-pip  # For Amazon Linux
+# OR
+sudo apt install python3 python3-pip  # For Ubuntu
+
+# Install git
+sudo yum install git  # For Amazon Linux
+# OR
+sudo apt install git  # For Ubuntu
+
+3. Project Setup
+
+# Clone your repository
+git clone [your-repository-url]
+
+# Create and activate virtual environment
+python3 -m myenv myenv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+
+Install tmux
+Install cronjob to run monitor_bot.sh every 5 minutes
+Create monitor_bot and start_trading_bot scripts:
+
+Setup cronjobs:
+
+      @reboot ~/start_trading_bot.sh
+      */5 * * * * ~/monitor_bot.sh
+
+Download schwabdev package from Schwab website and install in virtual environment
+
+Run trading bot using tmux sessions (in start_trading_bot.sh):
+
+   tmux new -s trading_bot
+   python3 vwap_spike_strategy/main.py
+
+Detach from tmux session using `Ctrl+b d` or `tmux detach-client -s trading_bot' from another terminal
+To view tmux session you can use: tmux attach-session -t session_name
+To stop tmux session: tmux kill-session -t session_name

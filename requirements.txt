@@ -93,9 +93,8 @@ rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
 rpds-py==0.20.0
 schedule==1.2.2
-# schwabdev==2.4.0
+schwabdev @ git+https://github.com/tylerebowers/Schwab-API-Python.git@f2d758fd1df729834b4531c484c8043a059f9b4c
 Send2Trash==1.8.3
-setuptools==75.2.0
 six==1.16.0
 sniffio==1.3.1
 soupsieve==2.6

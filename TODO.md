@@ -1,8 +1,10 @@
 
     -----------------------------------------------------------------------------------------------------
+    
     - Test VM runs autonomously 24/7 to ensure no issues
     - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
     - Logging should be minimized
+    - Try to downsize VM instance and see if it still works
     ------------------------------------------------------------------------------------------------------
     - Add allocation to premarket screener/daily screener based on number of postions
 
