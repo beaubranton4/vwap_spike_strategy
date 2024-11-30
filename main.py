@@ -140,8 +140,7 @@ def run_daily_screener():
     """Run at 12:01 ET """
     try:
         # Check yesterday's date
-        et_tz = pytz.timezone('US/Eastern')
-        yesterday = datetime.now(et_tz) - timedelta(days=1)
+        last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
 
         client = get_authenticated_client()
         logger.info("Starting daily screener...")
@@ -149,7 +148,7 @@ def run_daily_screener():
             client=client,
             ticker_list=ticker_list,
             combinations=combinations,
-            day_of_backtest=yesterday,
+            day_of_backtest=last_market_day,
             period_type=period_type,
             period=period,
             frequency_type=frequency_type,
@@ -280,38 +279,49 @@ def log_resource_usage():
     logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
 
 def calculate_sleep_time(current_time, jobs):
-    """
-    Calculate the appropriate sleep time based on the next scheduled job
-    
-    Args:
-        current_time (datetime): Current time in ET
-        jobs (list): List of scheduled jobs
-        
-    Returns:
-        float: Number of seconds to sleep
-    """
+    """Calculate the appropriate sleep time based on the next scheduled job"""
     if not jobs:
-        return 1.0  # Default sleep if no jobs
+        logger.info("No jobs scheduled, using default sleep time of 1.0s")
+        return 1.0
     
     # Get all next run times
     next_run_times = []
     et_tz = pytz.timezone('US/Eastern')
     
+    # Log current time
+    logger.info(f"Current time (ET): {current_time}")
+    
     for job in jobs:
         try:
-            next_run = job.next_run
-            if next_run:
-                next_run = et_tz.localize(next_run)
-                next_run_times.append(next_run)
+            # Get the job's target time
+            target_time = getattr(job.job_func, 'target_time', None)
+            if target_time:
+                logger.info(f"Job {job.job_func.__name__} target time: {target_time}")
+                
+                # Convert target_time to datetime
+                target_datetime = datetime.strptime(target_time, "%H:%M:%S")
+                today_et = current_time.date()
+                target_datetime = et_tz.localize(
+                    datetime.combine(today_et, target_datetime.time())
+                )
+                
+                # If target time is already passed for today, skip it
+                if target_datetime < current_time:
+                    continue
+                    
+                next_run_times.append(target_datetime)
+                logger.info(f"Next run for {job.job_func.__name__}: {target_datetime} ET")
+                
         except Exception as e:
-            logger.debug(f"Error getting next run time for job: {e}")
+            logger.error(f"Error getting next run time for job: {e}")
             continue
     
     if not next_run_times:
+        logger.info("No valid next run times found")
         return 1.0
     
     # Constants
-    MAX_SLEEP = 300  # 5 minutes
+    MAX_SLEEP = 60  # Maximum sleep time of 60 seconds
     BUFFER_TIME = 2  # Wake up 2 seconds before job
     MIN_SLEEP = 0.1  # Minimum sleep time
     
@@ -322,6 +332,10 @@ def calculate_sleep_time(current_time, jobs):
     if current_time.tzinfo is None:
         current_time = et_tz.localize(current_time)
     
+    # Log times in ET for debugging
+    # logger.info(f"Next run (ET): {next_run.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    # logger.info(f"Current time (ET): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    
     time_until_next_job = (next_run - current_time).total_seconds()
     
     if time_until_next_job > BUFFER_TIME:
@@ -329,7 +343,9 @@ def calculate_sleep_time(current_time, jobs):
     else:
         sleep_time = MIN_SLEEP
     
-    logger.debug(f"Next job in {time_until_next_job:.1f}s, sleeping for {sleep_time:.1f}s")
+    logger.info(f"Time until next job: {time_until_next_job:.1f}s")
+    logger.info(f"Sleeping for: {sleep_time:.1f}s")
+    
     return sleep_time
 
 def main():
@@ -340,14 +356,23 @@ def main():
     
     def schedule_in_et(job_time, job_func):
         """Schedule a job using Eastern Time with second precision"""
+        et_tz = pytz.timezone('US/Eastern')
+        
         def job_wrapper():
             try:
-                current_et_time = datetime.now(et_tz).strftime("%H:%M:%S")
+                # Get current time in ET
+                current_et = datetime.now(et_tz)
+                current_et_time = current_et.strftime("%H:%M:%S")
                 
-                # Add a window of acceptable execution time (e.g., within 2 seconds)
+                # Convert job_time to today's date in ET
                 job_datetime = datetime.strptime(job_time, "%H:%M:%S")
-                current_datetime = datetime.strptime(current_et_time, "%H:%M:%S")
-                time_diff = abs((current_datetime - job_datetime).total_seconds())
+                today_et = current_et.date()
+                job_datetime = et_tz.localize(
+                    datetime.combine(today_et, job_datetime.time())
+                )
+                
+                # Calculate time difference
+                time_diff = abs((current_et - job_datetime).total_seconds())
                 
                 if time_diff <= 5:  # + or - 5 second window
                     logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
@@ -355,10 +380,15 @@ def main():
                         logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
                         result = job_func()
                         logger.info(f"Completed {job_func.__name__}")
+                    
             except Exception as e:
                 logger.error(f"Error in job {job_func.__name__}: {str(e)}")
                 logger.error(traceback.format_exc())
 
+        # Store the target time for logging
+        job_wrapper.target_time = job_time
+        
+        # Schedule the job with the scheduler
         return scheduler.every(1).seconds.do(job_wrapper)
     
     # Initialize market_schedule with retry
@@ -381,6 +411,8 @@ def main():
     
     # Check if today is a market date
     today = datetime.now(et_tz)
+    logger.info(f"is_market_date: {is_market_date(market_schedule, today)}")
+    
     if not is_market_date(market_schedule, today):
         logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day. No jobs will be scheduled.")
         while True:     
@@ -391,7 +423,15 @@ def main():
         return
 
     # If it is a market day, schedule all jobs
-    screener_time = "10:24:20"
+    screener_time = "00:10:00"
+
+    #FOR TESTING
+    # if today.date() == datetime(2024, 11, 30).date():
+        # screener_time = "00:10:00"
+        # premarket_time = "09:29:00"
+        # market_open_time = "09:29:40"  # 20 seconds before 9:30
+        # market_close_time = "15:59:40"  # 20 seconds before 16:00
+
     if len(market_schedule) > 0:
         # Check if the DataFrame is empty
         if market_schedule.empty:
@@ -417,16 +457,17 @@ def main():
         premarket_time = "09:29:00"
         market_open_time = "09:29:40"  # 20 seconds before 9:30
         market_close_time = "15:59:40"  # 20 seconds before 16:00
+        
     
     # Schedule all jobs with second precision
-    schedule_in_et("00:00:00", refresh_market_schedule)
+    schedule_in_et("00:01:00", refresh_market_schedule)
     schedule_in_et(screener_time, run_daily_screener)
     schedule_in_et(premarket_time, schedule_premarket_screener)
     schedule_in_et(market_open_time, run_trading_strategy)
     schedule_in_et(market_close_time, close_end_of_day_positions)
     
     logger.info("Trading bot initialized and scheduled (all times ET):")
-    logger.info(f"- Schedule Refresh: 00:00:00 ET")
+    logger.info(f"- Schedule Refresh: 00:01:00 ET")
     logger.info(f"- Daily Screener: {screener_time} ET")
     logger.info(f"- Pre-market Screener: {premarket_time} ET")
     logger.info(f"- Trading Strategy: {market_open_time} ET")

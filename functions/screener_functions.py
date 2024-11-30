@@ -66,10 +66,15 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     if 'Ticker' not in ticker_list.columns:
         print("Column 'Ticker' not found in the DataFrame.")
         return pd.DataFrame()
+
+    
     
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
-    
+
+    #FOR TESTING
+    # all_tickers = ['PLUG']
+
     # Initialize results DataFrame
     stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike', 'Shares'
                                           'Previous Day Close','Signal Time', 'Stop Price', 'Sell Price'])
@@ -172,7 +177,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                 stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
 
                 stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
-                print(f"{ticker} processed successfully.")
+                # print(f"{ticker} processed successfully.")
                 
             except Exception as e:
                 print(f"Error processing {ticker}: {str(e)}")
@@ -228,7 +233,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                 for index, row in stockies[ticker].iterrows(): 
                     
-                    if (row['Grab_Price_Signal'] == 'True') & (row['Date'] == day_of_backtest.date()):
+                    if (row['Grab_Price_Signal'] == 'True') & (row['Date'] == day_of_backtest):
                         TEMP_SIGNAL_DAY = row['Date']
                         TARGET_ENTRY_PRICE = row['VWAP']
                         TEMP_SIGNAL_TIME = row['Time']
@@ -262,7 +267,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         print(f"Completed chunk {chunk_start//CHUNK_SIZE + 1}. Current results: {len(stocks_to_trade)} stocks")
     
     # Save final results
-    output_date = next_business_day(day_of_backtest.date())
+    output_date = next_business_day(day_of_backtest)
     output_file_path = 'screener/daily_screener_signals/' + str(output_date) + '.csv'
     stocks_to_trade.to_csv(output_file_path, index=True, header=True)
 

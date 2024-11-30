@@ -4,6 +4,7 @@ import pandas as pd
 import pandas_market_calendars as mcal
 
 
+
 ############################################## ALL FUNCTIONS ########################################################
 
 def next_business_day(current_date):
@@ -35,6 +36,42 @@ def next_business_day(current_date):
             return trading_day
             
     return None  # Return None if no next trading day found in range
+
+def last_trading_day(current_date):
+    """
+    Find the last business day in NYSE calendar before the given date.
+    
+    Args:
+        current_date: datetime object or date
+    Returns:
+        datetime: Last business day in Eastern timezone
+    """
+    # Convert to date if datetime
+    if isinstance(current_date, datetime):
+        current_date = current_date.date()
+    
+    # Get NYSE calendar for a reasonable date range
+    nyse = mcal.get_calendar('NYSE')
+    nyse_days = nyse.valid_days(
+        start_date=current_date - timedelta(days=5),
+        end_date=current_date + timedelta(days=5)
+    )
+    
+    # Convert to list of dates
+    valid_trading_days = pd.Series(nyse_days).dt.date
+    
+    # Find the last valid trading day
+    last_day = None
+    for trading_day in valid_trading_days:
+        if trading_day >= current_date:
+            break
+        last_day = trading_day
+            
+    if last_day is None:
+        return None
+        
+    return last_day
+
 
 ######################################## GET BUY/SELL SIGNAL FUNCTION ##################################################
 

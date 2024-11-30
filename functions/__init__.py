@@ -3,6 +3,7 @@
 # Importing specific functions from the backtest_functions module
 from .backtest_functions import (
     next_business_day,
+    last_trading_day,
     buy_sell_signal,
     calculate_sell_results,
     buy_sell
@@ -43,6 +44,7 @@ __all__ = [
 
     # Backtest functions
     'next_business_day',
+    'last_trading_day',
     'buy_sell_signal',
     'calculate_sell_results',
     'buy_sell',
