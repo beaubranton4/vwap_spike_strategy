@@ -4,6 +4,7 @@
     - Test VM runs autonomously 24/7 to ensure no issues
     - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
         - Logging should be minimized
+        - File stores should be cleaned up
     - Optimize VM costs:
         - Can try and schedule VM instance to only run weekdays.
         - Other tactics to scale down cost
