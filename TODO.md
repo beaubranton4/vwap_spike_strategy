@@ -1,14 +1,12 @@
 
     -----------------------------------------------------------------------------------------------------
-    - Get screener working on VM
-        - Add Shares to purchase based on premarket screener results (or create as seperate function at end of daily screener)
-        - May have to chunk the screener so that it doesn't run out of memory.
-        - Try to upgrade instance size
-        - Next ensure the execute_strategy.py doesn't run out of memory/cpu
-        - Next ensure the close all open positions at the end of the day function doesn't run out of memory/cpu
-        - Next ensure the main.py doesn't run out of memory/cpu
+    - Test VM runs autonomously 24/7 to ensure no issues
+    - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
+    - Logging should be minimized
     ------------------------------------------------------------------------------------------------------
-    
+    - Add allocation to premarket screener/daily screener based on number of postions
+
+    ------------------------------------------------------------------------------------------------------
     - Align project on VM and project on local machine:
         - auth folder, .env file, data folder, csv outputs and logs (all these should be on VM but don't need on github)
 
