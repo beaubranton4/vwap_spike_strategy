@@ -76,7 +76,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     # all_tickers = ['PLUG']
 
     # Initialize results DataFrame
-    stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike', 'Shares'
+    stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike',
                                           'Previous Day Close','Signal Time', 'Stop Price', 'Sell Price'])
     
     # Process tickers in chunks of 100
@@ -249,7 +249,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                         stocks_to_trade.at[RESULT_INDEXER,'Signal Time'] = TEMP_SIGNAL_TIME
                         stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                         stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
-                        stocks_to_trade.at[RESULT_INDEXER,'Shares'] = int(500/TARGET_ENTRY_PRICE)
+                        # stocks_to_trade.at[RESULT_INDEXER,'Shares'] = int(500/TARGET_ENTRY_PRICE)
                         stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = YESTERDAY_HIGH
                         stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
@@ -360,7 +360,9 @@ def run_premarket_screener(client, symbols_df):
     # Print removed and remaining symbols
     print("Removed symbols:", symbols_to_remove)
     print("Remaining symbols:", filtered_df['Ticker'].tolist())
-    return filtered_df
+
+    output = calculate_shares(client, filtered_df, ALLOCATION)
+    return output
 
 def calculate_shares(client, df, allocation):
     """
@@ -376,7 +378,7 @@ def calculate_shares(client, df, allocation):
     """
     try:
         # Get cash balance from Schwab
-        cash_balance = float(get_cash_balance(client))
+        cash_balance = float(get_cash_balance(client))/2 #make this -1000 instead of dividing by 2 when ready
         
         # Calculate the two limits
         allocation_limit = cash_balance * allocation
