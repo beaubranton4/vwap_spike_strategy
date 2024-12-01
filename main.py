@@ -15,67 +15,73 @@ import psutil
 import sys
 import traceback
 import gc
+from logging.handlers import TimedRotatingFileHandler
 
 # At the top of your file, after imports
 logger = None  # Initialize global logger variable
 
 # Setup logging
 def setup_logging():
-    global logger  # Declare logger as global
-    # Create logger first
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
+    """Setup logging with ET date-based log file that rotates at midnight ET"""
+    global logger
     
-    log_dir = Path('logs/main')
-    log_dir.mkdir(exist_ok=True)
+    # Create logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     
-    # Create log filename with date only
-    today = datetime.now(pytz.timezone('US/Eastern')).strftime("%Y%m%d")
-    log_file = log_dir / f'{today}.log'
+    # Remove any existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
     
-    # Create a formatter
+    # Create log directory if it doesn't exist
+    log_dir = "logs/main"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Get current ET date for log file name
+    et_tz = pytz.timezone('US/Eastern')
+    current_et_date = datetime.now(et_tz).strftime("%Y%m%d")
+    log_file = f"{log_dir}/{current_et_date}.log"
+    
+    # Create formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
     
-    # Create file handler
-    file_handler = logging.FileHandler(log_file)
+    # Create TimedRotatingFileHandler
+    file_handler = TimedRotatingFileHandler(
+        filename=log_file,
+        when='midnight',
+        interval=1,
+        backupCount=7,  # Keep 7 days of logs
+        encoding='utf-8',
+        utc=True  # Use UTC internally (we'll adjust for ET)
+    )
+    
+    # Calculate ET midnight in UTC for rotation
+    et_midnight = datetime.now(et_tz).replace(hour=0, minute=0, second=0, microsecond=0)
+    et_midnight_utc = et_midnight.astimezone(pytz.UTC)
+    file_handler.rolloverAt = int(et_midnight_utc.timestamp()) + 24*60*60  # Next midnight ET
+    
+    # Custom namer function to use ET date
+    def namer(default_name):
+        # Extract the date part from default_name
+        dt = datetime.now(et_tz)
+        return f"{log_dir}/{dt.strftime('%Y%m%d')}.log"
+    
+    file_handler.namer = namer
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
     
-    # Create console handler
+    # Add handlers
+    logger.addHandler(file_handler)
+    
+    # Add console handler for terminal output
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
+    logger.addHandler(console_handler)
     
-    # Remove any existing handlers
-    for handler in root_logger.handlers[:]:
-        root_logger.removeHandler(handler)
+    logger.info(f"Logging initialized for ET date: {current_et_date}")
     
-    # Add our handlers
-    root_logger.addHandler(file_handler)
-    root_logger.addHandler(console_handler)
-    
-    # Capture stdout and stderr
-    class StreamToLogger:
-        def __init__(self, logger, level):
-            self.logger = logger
-            self.level = level
-            self.linebuf = ''
-
-        def write(self, buf):
-            for line in buf.rstrip().splitlines():
-                if line:  # Only log non-empty lines
-                    self.logger.log(self.level, line.rstrip())
-        
-        def flush(self):
-            pass
-
-    # Replace stdout and stderr with logging
-    sys.stdout = StreamToLogger(root_logger, logging.INFO)
-    sys.stderr = StreamToLogger(root_logger, logging.ERROR)
-    
-    root_logger.info(f"Logging initialized for {today}")
-    
-    return root_logger
+    return logger
 
 # Now create the logger
 logger = setup_logging()
@@ -491,13 +497,6 @@ def main():
     
     while True:
         try:
-            # Check if we need to rotate log file (new ET day)
-            new_date = datetime.now(et_tz).strftime("%Y%m%d")
-            if new_date != current_log_date:
-                logger = setup_logging()  # This will create a new log file
-                current_log_date = new_date
-                logger.info("New day started - Log file rotated")
-            
             # Ensure current_time is timezone aware
             current_time = datetime.now(et_tz)
             

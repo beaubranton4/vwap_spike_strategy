@@ -6,8 +6,9 @@
         - Logging should be minimized
         - File stores should be cleaned up
     - Optimize VM costs:
-        - Can try and schedule VM instance to only run weekdays.
-        - Other tactics to scale down cost
+        - Can try and schedule VM instance to only run weekdays. (8-4pm while premarket screener is being used that only pulls since 7am)
+        - Other tactics to scale down cost:
+            - savings plan
     
     
     ------------------------------------------------------------------------------------------------------
