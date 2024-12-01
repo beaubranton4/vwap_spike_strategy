@@ -16,13 +16,22 @@ import sys
 import traceback
 import gc
 
+# At the top of your file, after imports
+logger = None  # Initialize global logger variable
+
 # Setup logging
 def setup_logging():
+    global logger  # Declare logger as global
+    # Create logger first
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    
     log_dir = Path('logs/main')
     log_dir.mkdir(exist_ok=True)
     
-    # Create log filename with timestamp
-    log_file = log_dir / f'{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
+    # Create log filename with date only
+    today = datetime.now(pytz.timezone('US/Eastern')).strftime("%Y%m%d")
+    log_file = log_dir / f'{today}.log'
     
     # Create a formatter
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -36,10 +45,6 @@ def setup_logging():
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
-    
-    # Get the root logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
     
     # Remove any existing handlers
     for handler in root_logger.handlers[:]:
@@ -68,11 +73,11 @@ def setup_logging():
     sys.stdout = StreamToLogger(root_logger, logging.INFO)
     sys.stderr = StreamToLogger(root_logger, logging.ERROR)
     
-    # Test the logging
-    root_logger.info("Logging system initialized")
+    root_logger.info(f"Logging initialized for {today}")
     
     return root_logger
 
+# Now create the logger
 logger = setup_logging()
 
 # Create a lock instance
@@ -349,7 +354,13 @@ def calculate_sleep_time(current_time, jobs):
     return sleep_time
 
 def main():
+    global logger  # Add this line to access global logger
     et_tz = pytz.timezone('US/Eastern')
+    current_log_date = datetime.now(et_tz).strftime("%Y%m%d")
+    
+    # Initialize logger if not already done
+    if logger is None:
+        logger = setup_logging()
     
     if sys.platform == 'darwin':
         setup_power_management()
@@ -480,8 +491,15 @@ def main():
     
     while True:
         try:
+            # Check if we need to rotate log file (new ET day)
+            new_date = datetime.now(et_tz).strftime("%Y%m%d")
+            if new_date != current_log_date:
+                logger = setup_logging()  # This will create a new log file
+                current_log_date = new_date
+                logger.info("New day started - Log file rotated")
+            
             # Ensure current_time is timezone aware
-            current_time = datetime.now(pytz.timezone('US/Eastern'))
+            current_time = datetime.now(et_tz)
             
             # Get all scheduled jobs
             jobs = scheduler.get_jobs()

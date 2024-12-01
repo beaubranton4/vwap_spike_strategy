@@ -77,12 +77,13 @@ pip install -r requirements.txt
 
 Install tmux
 Install cronjob to run monitor_bot.sh every 5 minutes
-Create monitor_bot and start_trading_bot scripts:
+Create monitor_bot, start_trading_bot, and cleanup scripts:
 
 Setup cronjobs:
 
       @reboot ~/start_trading_bot.sh
       */5 * * * * ~/monitor_bot.sh
+      0 0 * * * /path/to/cleanup.sh
 
 Download schwabdev package from Schwab website and install in virtual environment
 
@@ -94,3 +95,6 @@ Run trading bot using tmux sessions (in start_trading_bot.sh):
 Detach from tmux session using `Ctrl+b d` or `tmux detach-client -s trading_bot' from another terminal
 To view tmux session you can use: tmux attach-session -t trading_bot
 To stop tmux session: tmux kill-session -t trading_bot
+To start tmux session: tmux new -s trading_bot
+To activate virtual environment: source myenv/bin/activate
+To run trading bot: python main.py

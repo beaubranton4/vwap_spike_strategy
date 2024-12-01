@@ -1,0 +1,3 @@
+@reboot ~/start_trading_bot.sh
+*/5 * * * * ~/monitor_bot.sh
+0 0 * * * ~/cleanup.sh
