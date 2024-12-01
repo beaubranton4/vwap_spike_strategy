@@ -32,7 +32,8 @@ from .manage_authentication import (
 
 from .screener_functions import (
     run_vwap_spike_screener,
-    run_premarket_screener
+    run_premarket_screener,
+    calculate_shares 
 )
 
 from .execute_strategy import (
@@ -69,6 +70,7 @@ __all__ = [
     # Screener functions
     'run_vwap_spike_screener',   
     'run_premarket_screener',
+    'calculate_shares',
     
     # Strategy execution
     'ExecuteStrategy'

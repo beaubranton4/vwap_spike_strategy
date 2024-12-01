@@ -361,3 +361,42 @@ def run_premarket_screener(client, symbols_df):
     print("Removed symbols:", symbols_to_remove)
     print("Remaining symbols:", filtered_df['Ticker'].tolist())
     return filtered_df
+
+def calculate_shares(client, df, allocation):
+    """
+    Calculate the number of shares to trade based on cash balance and allocation rules
+    
+    Args:
+        client (schwabdev.Client): Authenticated Schwab client
+        df (pd.DataFrame): DataFrame containing 'Target Entry' column
+        allocation (float): Maximum allocation per trade (default 0.2 or 20%)
+    
+    Returns:
+        pd.DataFrame: Original DataFrame with 'Shares' column added
+    """
+    try:
+        # Get cash balance from Schwab
+        cash_balance = float(get_cash_balance(client))
+        
+        # Calculate the two limits
+        allocation_limit = cash_balance * allocation
+        equal_distribution = cash_balance / len(df)
+        
+        # Take the smaller of the two limits
+        position_size = min(allocation_limit, equal_distribution)
+        
+        # Calculate shares for each row
+        df['Shares'] = (position_size / df['Target Entry']).apply(lambda x: int(x))
+        
+        # Log the calculations
+        logger = logging.getLogger(__name__)
+        logger.info(f"Cash Balance: ${cash_balance:.2f}")
+        logger.info(f"Position Size: ${position_size:.2f}")
+        logger.info(f"Number of Tickers: {len(df)}")
+        
+        return df
+        
+    except Exception as e:
+        logger.error(f"Error calculating shares: {str(e)}")
+        logger.error(traceback.format_exc())
+        return df
