@@ -321,7 +321,7 @@ def calculate_sleep_time(current_time, jobs):
                     continue
                     
                 next_run_times.append(target_datetime)
-                logger.info(f"Next run for {job.job_func.__name__}: {target_datetime} ET")
+                # logger.info(f"Next run for {job.job_func.__name__}: {target_datetime} ET")
                 
         except Exception as e:
             logger.error(f"Error getting next run time for job: {e}")
@@ -354,8 +354,8 @@ def calculate_sleep_time(current_time, jobs):
     else:
         sleep_time = MIN_SLEEP
     
-    logger.info(f"Time until next job: {time_until_next_job:.1f}s")
-    logger.info(f"Sleeping for: {sleep_time:.1f}s")
+    # logger.info(f"Time until next job: {time_until_next_job:.1f}s")
+    # logger.info(f"Sleeping for: {sleep_time:.1f}s")
     
     return sleep_time
 
