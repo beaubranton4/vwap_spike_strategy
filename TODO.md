@@ -17,7 +17,10 @@
 ------------------------------------------------------------------------------------------------------
 
     - Get backtest working using schwabdev API and create into a function (add to backtest_functions.py folder)
-        - Could functionize get all price signals since they are redundant in both backtest and screener. IT would return stockies dataframe and pass into both functions
+------------------------------------------------------------------------------------------------------
+
+    - Investigate why VM is crashing while working on it and no real process is running. Is it cursor?
+
 ------------------------------------------------------------------------------------------------------
 
 - OTHER TO-DO's
