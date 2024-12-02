@@ -284,10 +284,10 @@ def close_end_of_day_positions():
         logger.error(f"End-of-day position closing failed: {str(e)}")
         logger.error(traceback.format_exc())
 
-def log_resource_usage():
-    cpu_percent = psutil.cpu_percent(interval=1)
-    memory_percent = psutil.virtual_memory().percent
-    logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
+# def log_resource_usage():
+#     cpu_percent = psutil.cpu_percent(interval=1)
+#     memory_percent = psutil.virtual_memory().percent
+#     logger.info(f"Resource usage - CPU: {cpu_percent}%, Memory: {memory_percent}%")
 
 def calculate_sleep_time(current_time, jobs):
     """Calculate the appropriate sleep time based on the next scheduled job"""
@@ -466,13 +466,13 @@ def main():
             market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
         
         # Calculate times 20 seconds before market events
-        premarket_time = (market_open - timedelta(minutes=1)).strftime("%H:%M:%S")
-        market_open_time = (market_open - timedelta(seconds=20)).strftime("%H:%M:%S")
-        market_close_time = (market_close - timedelta(seconds=20)).strftime("%H:%M:%S")
+        premarket_time = (market_open - timedelta(seconds=30)).strftime("%H:%M:%S")
+        market_open_time = market_open.strftime("%H:%M:%S")
+        market_close_time = (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
     else:
         logger.warning("Using default market times due to schedule initialization failure")
-        premarket_time = "09:29:00"
-        market_open_time = "09:29:40"  # 20 seconds before 9:30
+        premarket_time = "09:29:30"
+        market_open_time = "09:30:00"  # 20 seconds before 9:30
         market_close_time = "15:59:40"  # 20 seconds before 16:00
         
     
@@ -513,7 +513,7 @@ def main():
             # Log resource usage periodically
             current_time = time_lib.time()
             if current_time - last_resource_log >= resource_log_interval:
-                log_resource_usage()
+                # log_resource_usage()
                 last_resource_log = current_time
                 gc.collect()  # Periodic garbage collection
             
