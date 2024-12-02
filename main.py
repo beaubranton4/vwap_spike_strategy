@@ -307,7 +307,7 @@ def calculate_sleep_time(current_time, jobs):
             # Get the job's target time
             target_time = getattr(job.job_func, 'target_time', None)
             if target_time:
-                logger.info(f"Job {job.job_func.__name__} target time: {target_time}")
+                # logger.info(f"Job {job.job_func.__name__} target time: {target_time}")
                 
                 # Convert target_time to datetime
                 target_datetime = datetime.strptime(target_time, "%H:%M:%S")
