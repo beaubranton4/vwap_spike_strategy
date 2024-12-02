@@ -17,6 +17,7 @@
 ------------------------------------------------------------------------------------------------------
 
     - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    - Figure out how many stocks are not getting screened b/c 7am cutoff instead of full data
     - First check that the stream will actually run at 1am ET
     - Use the screener and update screener and main to not rely on premarket screener
         - Start at 1am ET
