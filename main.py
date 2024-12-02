@@ -300,7 +300,7 @@ def calculate_sleep_time(current_time, jobs):
     et_tz = pytz.timezone('US/Eastern')
     
     # Log current time
-    logger.info(f"Current time (ET): {current_time}")
+    # logger.info(f"Current time (ET): {current_time}")
     
     for job in jobs:
         try:
