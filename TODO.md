@@ -12,11 +12,21 @@
 
     ------------------------------------------------------------------------------------------------------
 
+    - Create file to analyze performance of the strategy
+
+------------------------------------------------------------------------------------------------------
+
     - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
+    - First check that the stream will actually run at 1am ET
+    - Use the screener and update screener and main to not rely on premarket screener
+        - Start at 1am ET
+
+    
     
 ------------------------------------------------------------------------------------------------------
 
     - Get backtest working using schwabdev API and create into a function (add to backtest_functions.py folder)
+
 ------------------------------------------------------------------------------------------------------
 
     - Investigate why VM is crashing while working on it and no real process is running. Is it cursor?
