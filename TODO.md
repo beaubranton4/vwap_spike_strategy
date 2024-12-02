@@ -9,18 +9,16 @@
         - Can try and schedule VM instance to only run weekdays. (8-4pm while premarket screener is being used that only pulls since 7am)
         - Other tactics to scale down cost:
             - savings plan
-    
-    
-    ------------------------------------------------------------------------------------------------------
-    - Add allocation to premarket screener/daily screener based on number of postions
 
     ------------------------------------------------------------------------------------------------------
 
     - Premarket screener to grab premarket data starting at 4:00am ET instead of using Schwab API that only has data starting at 7:00am ET
     
-    
+------------------------------------------------------------------------------------------------------
 
-
+    - Get backtest working using schwabdev API and create into a function (add to backtest_functions.py folder)
+        - Could functionize get all price signals since they are redundant in both backtest and screener. IT would return stockies dataframe and pass into both functions
+------------------------------------------------------------------------------------------------------
 
 - OTHER TO-DO's
     
