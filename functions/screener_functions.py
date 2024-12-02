@@ -356,12 +356,12 @@ def run_premarket_screener(client, symbols_df):
     # Remove the identified symbols from the DataFrame
     filtered_df = filtered_df[~filtered_df['Ticker'].isin(symbols_to_remove)]
     # Save the filtered DataFrame to a CSV file
-    filtered_df.to_csv('screener/premarket_screener_signals/' + str(datetime.now().date()) + '.csv', index=False)
     # Print removed and remaining symbols
     print("Removed symbols:", symbols_to_remove)
     print("Remaining symbols:", filtered_df['Ticker'].tolist())
 
     output = calculate_shares(client, filtered_df, ALLOCATION)
+    output.to_csv('screener/premarket_screener_signals/' + str(datetime.now().date()) + '.csv', index=False)
     return output
 
 def calculate_shares(client, df, allocation):

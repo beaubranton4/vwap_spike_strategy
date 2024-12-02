@@ -442,11 +442,11 @@ def main():
     # If it is a market day, schedule all jobs
     screener_time = "00:10:00"
 
-    #FOR TESTING
-    # if today.date() == datetime(2024, 11, 30).date():
-    #     screener_time = "15:25:30"
+    # FOR TESTING
+    # if today.date() == datetime(2024, 12, 2).date():
+    #     screener_time = "00:25:30"
     #     premarket_time = "09:29:00"
-    #     market_open_time = "09:29:40"  # 20 seconds before 9:30
+    #     market_open_time = "11:25:00"  # 20 seconds before 9:30
     #     market_close_time = "15:59:40"  # 20 seconds before 16:00
 
     if len(market_schedule) > 0:
