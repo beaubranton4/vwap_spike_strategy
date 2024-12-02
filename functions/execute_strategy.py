@@ -22,29 +22,46 @@ dotenv.load_dotenv()
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Add file handler for saving logs
+# Modify the setup_logger function
 def setup_logger():
-    # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-        
-    # Create a unique log file name with timestamp
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    log_file = f'logs/execute_strategy/{timestamp}.log'
+    """Set up logging with both file and console handlers"""
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    
+    # Clear any existing handlers
+    logger.handlers = []
+    
+    # Create logs/execute_strategy directory if it doesn't exist
+    log_dir = 'logs/execute_strategy'
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Create a unique log file name with timestamp and date
+    et_tz = pytz.timezone('US/Eastern')
+    timestamp = datetime.now(et_tz).strftime('%Y-%m-%d')
+    log_file = f'{log_dir}/{timestamp}.log'
     
     # Create file handler
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.INFO)
     
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
     # Create formatter
-    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', 
+                                datefmt='%Y-%m-%d %H:%M:%S')
+    
+    # Add formatter to handlers
     file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
     
-    # Add file handler to logger
+    # Add handlers to logger
     logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
     
-    logger.info(f"Logging to: {log_file}")
-    return log_file
+    logger.info(f"Logging initialized. Log file: {log_file}")
+    return logger
 
 @dataclass
 class ExecuteStrategyConfig:
@@ -62,6 +79,9 @@ class ExecuteStrategy:
     """
     def __init__(self, use_mock_data: bool = False):
         """Initialize with option for mock data"""
+        # Setup logger first
+        self.logger = setup_logger()
+        
         self.use_mock_data = use_mock_data
         dotenv.load_dotenv()
         
@@ -86,14 +106,14 @@ class ExecuteStrategy:
             if not use_mock_data:
                 raise
             else:
-                logger.warning(f"Failed to initialize real client in mock mode: {e}")
+                self.logger.warning(f"Failed to initialize real client in mock mode: {e}")
                 self.client = None
         
         # Initialize streamer
         if not use_mock_data:
             self.streamer = self.client.stream
         else:
-            logger.info("Initializing with mock data streamer")
+            self.logger.info("Initializing with mock data streamer")
             # Set up simulated start time at midnight ET today
             today = datetime.now(self.et_timezone).date()
             start_time = datetime.combine(today, datetime.strptime("00:00", "%H:%M").time())
@@ -128,13 +148,13 @@ class ExecuteStrategy:
         try:
             # Check if tokens file exists
             if not os.path.exists("auth/schwab_dev_tokens.json"):
-                logger.error("schwab_dev_tokens.json not found in auth directory")
+                self.logger.error("schwab_dev_tokens.json not found in auth directory")
                 raise FileNotFoundError("schwab_dev_tokens.json not found")
                 
-            logger.info("Authentication tokens found")
+            self.logger.info("Authentication tokens found")
                 
         except Exception as e:
-            logger.error(f"Token setup error: {e}")
+            self.logger.error(f"Token setup error: {e}")
             raise
 
     def _initialize_client(self):
@@ -157,10 +177,10 @@ class ExecuteStrategy:
                 update_tokens_auto=True
             )
             
-            logger.info("Client initialized successfully")
+            self.logger.info("Client initialized successfully")
             
         except Exception as e:
-            logger.error(f"Client initialization error: {e}")
+            self.logger.error(f"Client initialization error: {e}")
             raise
 
     def _get_strategy_end_time(self) -> datetime:
@@ -203,19 +223,19 @@ class ExecuteStrategy:
             # strategy_end = min(market_close, strategy_cutoff)
             strategy_end = strategy_cutoff
             
-            logger.info(f"Market closes at: {market_close.strftime('%H:%M:%S')} ET")
-            logger.info(f"Strategy ends at: {strategy_end.strftime('%H:%M:%S')} ET")
+            self.logger.info(f"Market closes at: {market_close.strftime('%H:%M:%S')} ET")
+            self.logger.info(f"Strategy ends at: {strategy_end.strftime('%H:%M:%S')} ET")
             return strategy_end
             
         except Exception as e:
-            logger.error(f"Error getting strategy end time: {e}")
+            self.logger.error(f"Error getting strategy end time: {e}")
             # Default to 4:00 PM ET using appropriate time source
             if self.use_mock_data and hasattr(self, 'streamer'):
                 now = self.streamer.get_current_time()
             else:
                 now = datetime.now(self.et_timezone)
             default_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-            logger.warning(f"Using default end time: {default_close.strftime('%H:%M:%S')} ET")
+            self.logger.warning(f"Using default end time: {default_close.strftime('%H:%M:%S')} ET")
             return default_close
 
     def _get_market_open_time(self) -> datetime:
@@ -235,18 +255,18 @@ class ExecuteStrategy:
                 raise ValueError("No market schedule found for today")
             
             open_time = schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-            logger.info(f"Market opens at: {open_time.strftime('%H:%M:%S')} ET")
+            self.logger.info(f"Market opens at: {open_time.strftime('%H:%M:%S')} ET")
             return open_time
             
         except Exception as e:
-            logger.error(f"Error getting market open time: {e}")
+            self.logger.error(f"Error getting market open time: {e}")
             # Default to 9:30 AM ET using appropriate time source
             if self.use_mock_data and hasattr(self, 'streamer'):
                 now = self.streamer.get_current_time()
             else:
                 now = datetime.now(self.et_timezone)
             default_open = now.replace(hour=9, minute=30, second=0, microsecond=0)
-            logger.warning(f"Using default open time: {default_open.strftime('%H:%M:%S')} ET")
+            self.logger.warning(f"Using default open time: {default_open.strftime('%H:%M:%S')} ET")
             return default_open
 
     def get_current_time(self) -> datetime:
@@ -271,10 +291,10 @@ class ExecuteStrategy:
     def setup_signal_handlers(self) -> None:
         """Set up handlers for graceful shutdown on system signals"""
         def signal_handler(signum, frame):
-            logger.info("\nShutdown signal received. Cleaning up...")
+            self.logger.info("\nShutdown signal received. Cleaning up...")
             self.is_running = False
             self.streamer.stop()
-            logger.info("Stream stopped. Exiting...")
+            self.logger.info("Stream stopped. Exiting...")
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
@@ -297,11 +317,11 @@ class ExecuteStrategy:
                         
                         # Print positions once every 10 minutes
                         if (current_time - self.last_position_print_time).total_seconds() >= 600:
-                            logger.info("\n" + "="*50)
-                            logger.info(f"Position Update - {current_time.strftime('%H:%M:%S')} ET")
-                            logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
-                            logger.info(f"Closed Positions: {list(self.closed_positions)}")
-                            logger.info("="*50 + "\n")
+                            self.logger.info("\n" + "="*50)
+                            self.logger.info(f"Position Update - {current_time.strftime('%H:%M:%S')} ET")
+                            self.logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
+                            self.logger.info(f"Closed Positions: {list(self.closed_positions)}")
+                            self.logger.info("="*50 + "\n")
                             self.last_position_print_time = current_time
                         
                         # Process each symbol's data
@@ -331,8 +351,8 @@ class ExecuteStrategy:
                                         self._check_entry_conditions(symbol, price, symbol_data, current_time)
                             
         except Exception as e:
-            logger.error(f"Error processing message: {str(e)}")
-            logger.error(f"Message content: {message}")
+            self.logger.error(f"Error processing message: {str(e)}")
+            self.logger.error(f"Message content: {message}")
 
     def _check_entry_conditions(self, symbol: str, price: float, symbol_data: pd.Series,
                               current_time: datetime) -> None:
@@ -360,20 +380,20 @@ class ExecuteStrategy:
                 try:
                     cash_balance = get_cash_balance(self.client) - 1000 #Ensure we have at least $1000 left over
                     if order_value > cash_balance:
-                        logger.warning(f"\n{'='*50}")
-                        logger.warning(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                        self.logger.warning(f"\n{'='*50}")
+                        self.logger.warning(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                                     f"❌ Insufficient funds for order: ${order_value:.2f} > ${cash_balance:.2f}")
-                        logger.warning(f"{'='*50}\n")
+                        self.logger.warning(f"{'='*50}\n")
                         return
                         
                 except Exception as e:
-                    logger.error(f"Error checking cash balance: {str(e)}")
+                    self.logger.error(f"Error checking cash balance: {str(e)}")
                     return
                     
-                logger.info(f"\n{'='*50}")
-                logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
+                self.logger.info(f"\n{'='*50}")
+                self.logger.info(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                           f"${price:.2f} | 🔴 SHORT SIGNAL | Target: ${symbol_data['Target Entry']:.2f}")
-                logger.info(f"Order Details: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}")
+                self.logger.info(f"Order Details: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}")
 
                 order_success = False
                 if not self.use_mock_data:
@@ -388,14 +408,14 @@ class ExecuteStrategy:
                         #PLACE ORDER
                         order_result = place_bracket_order(self.client, symbol, quantity, instruction='SELL_SHORT' , order_type='LIMIT', price=limit_price, stop_price=stop_price, target_price=target_price)                       
                         if order_result != 'REJECTED':
-                            logger.info(f"✅ Order successfully placed w status: {order_result}")
+                            self.logger.info(f"✅ Order successfully placed w status: {order_result}")
                             self.active_short_positions[symbol] = {
                                 'entry_price': limit_price,  # Store entry price
                                 'trade_time': current_time.strftime('%I:%M%p ET')  # Store trade time in desired format
                             }
                             order_success = True
                         else:
-                            logger.error(f"❌ Order was rejected. Removing symbol from watchlist: {symbol}")
+                            self.logger.error(f"❌ Order was rejected. Removing symbol from watchlist: {symbol}")
                             self.closed_positions.add(symbol)  
                             #Event Tracking if order is rejected     
                             self.add_trading_event(
@@ -410,9 +430,9 @@ class ExecuteStrategy:
                         # END OF PLACE ORDER
 
                     except Exception as e:
-                        logger.error(f"❌ Error during order placement: {str(e)}")
+                        self.logger.error(f"❌ Error during order placement: {str(e)}")
                 else:
-                    logger.info(f"✅ Mock data mode: Order would have been placed")
+                    self.logger.info(f"✅ Mock data mode: Order would have been placed")
                     self.active_short_positions[symbol] = {
                         'entry_price': limit_price,  # Store entry price
                         'trade_time': current_time.strftime('%I:%M%p ET')  # Store trade time in desired format
@@ -432,12 +452,12 @@ class ExecuteStrategy:
                                 f"Order: {quantity} shares @ ${limit_price:.2f} = ${order_value:.2f}"
                     )
                     
-                    logger.info(f"{'='*50}\n")                    
+                    self.logger.info(f"{'='*50}\n")                    
                     sleep(0.01)  # Small delay to prevent overwhelming the system
                     
         except Exception as e:
-            logger.error(f"Error in entry conditions for {symbol}: {e}")
-            logger.error(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error in entry conditions for {symbol}: {e}")
+            self.logger.error(f"Full traceback: {traceback.format_exc()}")
 
     def print_status_update(self) -> None:
         """Print periodic performance statistics"""
@@ -446,24 +466,24 @@ class ExecuteStrategy:
             
         elapsed_time = (datetime.now() - self.stream_start_time).seconds
         if elapsed_time > 0 and elapsed_time % ExecuteStrategyConfig.HEARTBEAT_INTERVAL == 0:
-            logger.info("\nStatus Update:")
-            logger.info(f"Running time: {elapsed_time} seconds")
-            logger.info(f"Messages received: {self.message_count}")
-            logger.info(f"Messages per second: {self.message_count/elapsed_time:.2f}")
+            self.logger.info("\nStatus Update:")
+            self.logger.info(f"Running time: {elapsed_time} seconds")
+            self.logger.info(f"Messages received: {self.message_count}")
+            self.logger.info(f"Messages per second: {self.message_count/elapsed_time:.2f}")
 
     def execute_vwap_spike_strategy(self, df: pd.DataFrame) -> None:
         """Execute the VWAP spike strategy"""
         try:
-            logger.info("Starting VWAP spike strategy execution...")
-            logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]} ET")
+            self.logger.info("Starting VWAP spike strategy execution...")
+            self.logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]} ET")
             self.df = df
             
             # Print initial stock list in a clean format
-            logger.info("\n" + "="*50)
-            logger.info("Starting Strategy with Stocks:")
+            self.logger.info("\n" + "="*50)
+            self.logger.info("Starting Strategy with Stocks:")
             for _, row in df.iterrows():
-                logger.info(f"{row['Ticker']:<6} | Target Entry: ${row['Target Entry']:.2f}")
-            logger.info("="*50 + "\n")
+                self.logger.info(f"{row['Ticker']:<6} | Target Entry: ${row['Target Entry']:.2f}")
+            self.logger.info("="*50 + "\n")
 
             symbols = df['Ticker'].unique().tolist()
 
@@ -487,12 +507,12 @@ class ExecuteStrategy:
             
             ####################### Start the main trading stream #######################
             # Start the main trading stream
-            logger.info("\n" + "="*50)
-            logger.info("Starting main trading stream...")
-            logger.info(f"Tracking {len(symbols)} symbols")
-            logger.info(f"Market open: {self.market_open_time.strftime('%H:%M:%S')} ET")
-            logger.info(f"Strategy end: {self.strategy_end_time.strftime('%H:%M:%S')} ET")
-            logger.info("="*50 + "\n")
+            self.logger.info("\n" + "="*50)
+            self.logger.info("Starting main trading stream...")
+            self.logger.info(f"Tracking {len(symbols)} symbols")
+            self.logger.info(f"Market open: {self.market_open_time.strftime('%H:%M:%S')} ET")
+            self.logger.info(f"Strategy end: {self.strategy_end_time.strftime('%H:%M:%S')} ET")
+            self.logger.info("="*50 + "\n")
         
             # Initialize new stream
             if not self.use_mock_data:
@@ -510,12 +530,12 @@ class ExecuteStrategy:
                         ExecuteStrategyConfig.L1_FIELDS
                     ))
                     self.is_running = True
-                    logger.info("Stream connection established successfully")
+                    self.logger.info("Stream connection established successfully")
                     break
                 except Exception as e:
-                    logger.error(f"Stream connection attempt {attempt + 1} failed: {e}")
+                    self.logger.error(f"Stream connection attempt {attempt + 1} failed: {e}")
                     if attempt < max_retries - 1:
-                        logger.info(f"Retrying in {retry_delay} seconds...")
+                        self.logger.info(f"Retrying in {retry_delay} seconds...")
                         sleep(retry_delay)
                         # Re-authenticate before retry
                         self.client = get_authenticated_client()
@@ -542,21 +562,21 @@ class ExecuteStrategy:
 
                     # Check if it's time for a status update
                     if (current_time - last_status_time).total_seconds() >= 600:
-                        logger.info("\n" + "="*50)
-                        logger.info(f"Status Update - {current_time.strftime('%H:%M:%S')} ET")
-                        logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
-                        logger.info(f"Closed Positions: {list(self.closed_positions)}")
-                        logger.info("="*50 + "\n")
+                        self.logger.info("\n" + "="*50)
+                        self.logger.info(f"Status Update - {current_time.strftime('%H:%M:%S')} ET")
+                        self.logger.info(f"Active Positions: {list(self.active_short_positions.keys())}")
+                        self.logger.info(f"Closed Positions: {list(self.closed_positions)}")
+                        self.logger.info("="*50 + "\n")
                         last_status_time = current_time
                     
                     sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
                     
                 except Exception as e:
-                    logger.error(f"Error in trading loop: {e}")
+                    self.logger.error(f"Error in trading loop: {e}")
                     # Reconnection logic
                     if not self.use_mock_data:
                         try:
-                            logger.info("Attempting to reconnect stream...")
+                            self.logger.info("Attempting to reconnect stream...")
                             self.streamer.stop()
                             sleep(1)
                             self.streamer = self.client.stream
@@ -565,16 +585,16 @@ class ExecuteStrategy:
                                 ",".join(symbols), 
                                 ExecuteStrategyConfig.L1_FIELDS
                             ))
-                            logger.info("Stream reconnected successfully")
+                            self.logger.info("Stream reconnected successfully")
                         except Exception as reconnect_error:
-                            logger.error(f"Failed to reconnect stream: {reconnect_error}")
+                            self.logger.error(f"Failed to reconnect stream: {reconnect_error}")
                             self.is_running = False
                             break
 
-            logger.info("Trading strategy execution completed.")
+            self.logger.info("Trading strategy execution completed.")
             
         except Exception as e:
-            logger.error(f"Strategy execution failed: {e}", exc_info=True)
+            self.logger.error(f"Strategy execution failed: {e}", exc_info=True)
             raise
         finally:
             self.cleanup()
@@ -588,28 +608,21 @@ class ExecuteStrategy:
                 os.makedirs('mock_stream')
                 
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            events_filename = f'logs/trades/trading_events_{timestamp}.xlsx'
-            
-            # Export trading events
-            with pd.ExcelWriter(events_filename, engine='openpyxl') as writer:
-                self.trading_events.to_excel(writer, sheet_name='All Events', index=False)
-                summary = self.trading_events['event_type'].value_counts()
-                summary.to_frame('Count').to_excel(writer, sheet_name='Event Summary')
-                symbol_summary = self.trading_events.groupby(['symbol', 'event_type']).size().unstack(fill_value=0)
-                symbol_summary.to_excel(writer, sheet_name='Symbol Summary')
-            
-            logger.info(f"Trading events saved to {events_filename}")
+            # Save main events to CSV
+            events_filename = f'logs/trades/trading_events_{timestamp}.csv'
+            self.trading_events.to_csv(events_filename, index=False)
+            self.logger.info(f"Trading events saved to {events_filename}")
         
         # Cleanup stream
-        logger.info("Cleaning up strategy execution...")
+        self.logger.info("Cleaning up strategy execution...")
         self.is_running = False
         if hasattr(self, 'streamer') and self.streamer is not None:
             try:
                 self.streamer.stop()
-                logger.info("Strategy streamer stopped successfully")
+                self.logger.info("Strategy streamer stopped successfully")
                 sleep(1)  # Give time for cleanup
             except Exception as e:
-                logger.error(f"Error stopping strategy streamer: {e}")
+                self.logger.error(f"Error stopping strategy streamer: {e}")
 
 ######################### PRE-MARKET TRACKING FUNCTIONS ######################### 
 
@@ -619,14 +632,14 @@ class ExecuteStrategy:
         self.message_buffer = []
         self.symbols_to_remove = set()
         
-        logger.info("\n" + "="*50)
-        logger.info("Starting pre-market tracking...")
-        logger.info(f"Initial symbols ({len(self.df)}):")
+        self.logger.info("\n" + "="*50)
+        self.logger.info("Starting pre-market tracking...")
+        self.logger.info(f"Initial symbols ({len(self.df)}):")
         for symbol in self.df['Ticker'].unique():
-            logger.info(f"- {symbol}: Yesterday High ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
-        logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
-        logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
-        logger.info("="*50 + "\n")
+            self.logger.info(f"- {symbol}: Yesterday High ${self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]:.2f}")
+        self.logger.info(f"Current time: {self.get_current_time().strftime('%H:%M:%S')} ET")
+        self.logger.info(f"Market opens at: {self.market_open_time.strftime('%H:%M:%S')} ET")
+        self.logger.info("="*50 + "\n")
         
         try:
             self.streamer.start(self.handle_stream_message)
@@ -650,7 +663,7 @@ class ExecuteStrategy:
                         message = json.loads(self.message_buffer.pop(0))
                         self.process_premarket_message(message)
                     except Exception as e:
-                        logger.error(f"Error processing pre-market message: {e}")
+                        self.logger.error(f"Error processing pre-market message: {e}")
                 
                 current_time = self.get_current_time()
                 
@@ -661,7 +674,7 @@ class ExecuteStrategy:
                 
                 # Check if we've reached market open time and break if we have
                 if self.get_current_time() >= self.market_open_time:
-                    logger.info("Market open time reached. Stopping pre-market tracking...")
+                    self.logger.info("Market open time reached. Stopping pre-market tracking...")
                     self.is_running = False
                     break
                     
@@ -677,16 +690,16 @@ class ExecuteStrategy:
             return self.df
             
         except Exception as e:
-            logger.error(f"Error during pre-market tracking: {e}")
+            self.logger.error(f"Error during pre-market tracking: {e}")
             raise
         finally:
             self.is_running = False  # Ensure is_running is set to False
             if hasattr(self, 'streamer') and self.streamer is not None:
                 try:
                     self.streamer.stop()
-                    logger.info("Pre-market streamer stopped successfully")
+                    self.logger.info("Pre-market streamer stopped successfully")
                 except Exception as e:
-                    logger.error(f"Error stopping pre-market streamer: {e}")
+                    self.logger.error(f"Error stopping pre-market streamer: {e}")
 
     def process_premarket_message(self, message: Dict[str, Any]) -> None:
         """Process pre-market data messages"""
@@ -732,51 +745,51 @@ class ExecuteStrategy:
                                         )
                                         
                                         # Log the removal
-                                        logger.info("\n" + "-"*70)
-                                        logger.info(f"\n🚫 REMOVING {symbol}\nCurrent Price: ${current_price:.2f}\nPremarket High: ${self.premarket_highs[symbol]:.2f}\nYesterday High: ${yesterday_high:.2f}\nRemaining Symbols: {len(self.df['Ticker'].unique()) - len(self.symbols_to_remove) - 1}")
-                                        logger.info("-"*70 + "\n")
+                                        self.logger.info("\n" + "-"*70)
+                                        self.logger.info(f"\n🚫 REMOVING {symbol}\nCurrent Price: ${current_price:.2f}\nPremarket High: ${self.premarket_highs[symbol]:.2f}\nYesterday High: ${yesterday_high:.2f}\nRemaining Symbols: {len(self.df['Ticker'].unique()) - len(self.symbols_to_remove) - 1}")
+                                        self.logger.info("-"*70 + "\n")
                                         
                                         self.symbols_to_remove.add(symbol)
 
         except Exception as e:
-            logger.error(f"Error processing pre-market message: {str(e)}")
-            logger.error(f"Message content: {message}")
+            self.logger.error(f"Error processing pre-market message: {str(e)}")
+            self.logger.error(f"Message content: {message}")
 
     def print_premarket_status(self, simulated_time: datetime) -> None:
         """Print periodic pre-market status update using simulated time"""
         # Calculate hours until market open using simulated time
         hours_to_open = (self.market_open_time - simulated_time).total_seconds() / 3600
         
-        logger.info("\n" + "="*50)
-        logger.info(f"Pre-market status - {simulated_time.strftime('%H:%M:%S')} ET")
-        logger.info(f"Hours until market open: {hours_to_open:.1f}")
-        logger.info(f"Symbols being tracked: {len(self.df) - len(self.symbols_to_remove)}")
-        logger.info(f"Symbols removed: {len(self.symbols_to_remove)}")
-        logger.info("="*50 + "\n")
+        self.logger.info("\n" + "="*50)
+        self.logger.info(f"Pre-market status - {simulated_time.strftime('%H:%M:%S')} ET")
+        self.logger.info(f"Hours until market open: {hours_to_open:.1f}")
+        self.logger.info(f"Symbols being tracked: {len(self.df) - len(self.symbols_to_remove)}")
+        self.logger.info(f"Symbols removed: {len(self.symbols_to_remove)}")
+        self.logger.info("="*50 + "\n")
 
     def print_premarket_summary(self) -> None:
         """Print final pre-market summary with detailed information"""
-        logger.info("\n" + "="*70)
-        logger.info("PREMARKET TRACKING COMPLETED")
-        logger.info("="*70)
+        self.logger.info("\n" + "="*70)
+        self.logger.info("PREMARKET TRACKING COMPLETED")
+        self.logger.info("="*70)
         
         if self.symbols_to_remove:
-            logger.info("\n🚫 REMOVED SYMBOLS:")
+            self.logger.info("\n🚫 REMOVED SYMBOLS:")
             for symbol in sorted(self.symbols_to_remove):
                 yesterday_high = self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]
-                logger.info(f"- {symbol:<6} | Premarket High: ${self.premarket_highs[symbol]:.2f} | Yesterday High: ${yesterday_high:.2f}")
+                self.logger.info(f"- {symbol:<6} | Premarket High: ${self.premarket_highs[symbol]:.2f} | Yesterday High: ${yesterday_high:.2f}")
         
         remaining_symbols = set(self.df['Ticker']) - self.symbols_to_remove
         if remaining_symbols:
-            logger.info("\n✅ REMAINING SYMBOLS:")
+            self.logger.info("\n✅ REMAINING SYMBOLS:")
             for symbol in sorted(remaining_symbols):
                 yesterday_high = self.df.loc[self.df['Ticker'] == symbol, 'Yesterday High'].iloc[0]
                 current_high = self.premarket_highs.get(symbol, 0)
-                logger.info(f"- {symbol:<6} | Current High: ${current_high:.2f} | Yesterday High: ${yesterday_high:.2f}")
+                self.logger.info(f"- {symbol:<6} | Current High: ${current_high:.2f} | Yesterday High: ${yesterday_high:.2f}")
         
-        logger.info("\n" + "="*70)
-        logger.info(f"Final Count - Removed: {len(self.symbols_to_remove)} | Remaining: {len(remaining_symbols)}")
-        logger.info("="*70 + "\n")
+        self.logger.info("\n" + "="*70)
+        self.logger.info(f"Final Count - Removed: {len(self.symbols_to_remove)} | Remaining: {len(remaining_symbols)}")
+        self.logger.info("="*70 + "\n")
 
     def add_trading_event(self, timestamp, symbol, price, quantity, order_value, event_type, details):
         """Helper method to add events to trading_events DataFrame"""

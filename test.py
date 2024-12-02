@@ -63,14 +63,14 @@ def main():
     # print(len(schedule))
     # next_biz_date = next_business_day(datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1))
     # print(next_biz_date)
-
+    
     # print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
     # Initialize client
-    client = get_authenticated_client()
-    df = pd.read_csv(f'screener/daily_screener_signals/2024-11-29.csv')
-    new_df = calculate_shares(client, df, ALLOCATION)
-    new_df.to_csv('test_add.csv', index=False)
-    print(new_df)
+    # client = get_authenticated_client()
+    # df = pd.read_csv(f'screener/daily_screener_signals/2024-11-29.csv')
+    # new_df = calculate_shares(client, df, ALLOCATION)
+    # new_df.to_csv('test_add.csv', index=False)
+    # print(new_df)
 
     # check_position_match(client, 'OPEN', 618, False)
     # date = last_trading_day(datetime.now(pytz.timezone('US/Eastern'))+timedelta(days=2))
