@@ -23,15 +23,17 @@ logger = None  # Initialize global logger variable
 # Setup logging
 def setup_logging():
     """Setup logging with ET date-based log file that rotates at midnight ET"""
-    global logger
-    
-    # Create logger
+    # Get the existing logger if it exists
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
     
-    # Remove any existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
+    # If the logger already has handlers, assume it's configured
+    if logger.handlers:
+        return logger
+    
+    # Prevent propagation to root logger to avoid duplicate messages
+    logger.propagate = False
+        
+    logger.setLevel(logging.INFO)
     
     # Create log directory if it doesn't exist
     log_dir = "logs/main"
@@ -42,8 +44,21 @@ def setup_logging():
     current_et_date = datetime.now(et_tz).strftime("%Y%m%d")
     log_file = f"{log_dir}/{current_et_date}.log"
     
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    # Create custom formatter that converts to ET
+    class ETFormatter(logging.Formatter):
+        def converter(self, timestamp):
+            dt = datetime.fromtimestamp(timestamp)
+            et_tz = pytz.timezone('US/Eastern')
+            return dt.astimezone(et_tz)
+        
+        def formatTime(self, record, datefmt=None):
+            dt = self.converter(record.created)
+            if datefmt:
+                return dt.strftime(datefmt)
+            return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+    
+    # Create formatter with ET timezone
+    formatter = ETFormatter('%(asctime)s - %(levelname)s - %(message)s')
     
     # Create TimedRotatingFileHandler
     file_handler = TimedRotatingFileHandler(
@@ -82,9 +97,6 @@ def setup_logging():
     logger.info(f"Logging initialized for ET date: {current_et_date}")
     
     return logger
-
-# Now create the logger
-logger = setup_logging()
 
 # Create a lock instance
 job_lock = threading.Lock()
@@ -139,7 +151,7 @@ def is_market_date(schedule_input: pd.DataFrame, check_date: datetime = None) ->
         # Check if date exists in schedule
         is_trading_day = check_date in schedule_dates
         
-        logger.info(f"Date check for {check_date}: {'Trading day' if is_trading_day else 'Non-trading day'}")
+        # logger.info(f"Date check for {check_date}: {'Trading day' if is_trading_day else 'Non-trading day'}")
         return is_trading_day
         
     except Exception as e:
@@ -291,25 +303,49 @@ def close_end_of_day_positions():
 
 def calculate_sleep_time(current_time, jobs):
     """Calculate the appropriate sleep time based on the next scheduled job"""
-    if not jobs:
-        logger.info("No jobs scheduled, using default sleep time of 1.0s")
-        return 1.0
-    
-    # Get all next run times
-    next_run_times = []
     et_tz = pytz.timezone('US/Eastern')
     
-    # Log current time
-    # logger.info(f"Current time (ET): {current_time}")
+    # If no jobs, check if we should wait for next trading day
+    if not jobs:
+        try:
+            # Get next trading day
+            next_trading_day = None
+            check_date = current_time
+            
+            # Look up to 7 days ahead for the next trading day
+            for _ in range(7):
+                check_date = check_date + timedelta(days=1)
+                if is_market_date(market_schedule, check_date):
+                    next_trading_day = check_date
+                    break
+            
+            if next_trading_day:
+                # Calculate time until midnight of next trading day
+                next_midnight = next_trading_day.replace(hour=0, minute=0, second=0, microsecond=0)
+                seconds_until_midnight = (next_midnight - current_time).total_seconds()
+                
+                # Log once per hour that we're waiting for next trading day
+                if current_time.minute == 0:
+                    logger.info(f"Waiting for next trading day: {next_trading_day.strftime('%Y-%m-%d')}")
+                    logger.info(f"Time until midnight: {seconds_until_midnight/3600:.1f} hours")
+                
+                # Sleep for up to 60 seconds at a time
+                return min(60, max(0.1, seconds_until_midnight))
+            else:
+                logger.warning("No trading days found in the next week")
+                return 60
+                
+        except Exception as e:
+            logger.error(f"Error calculating next trading day: {e}")
+            return 60
+    
+    # Rest of the existing function for handling active jobs
+    next_run_times = []
     
     for job in jobs:
         try:
-            # Get the job's target time
             target_time = getattr(job.job_func, 'target_time', None)
             if target_time:
-                # logger.info(f"Job {job.job_func.__name__} target time: {target_time}")
-                
-                # Convert target_time to datetime
                 target_datetime = datetime.strptime(target_time, "%H:%M:%S")
                 today_et = current_time.date()
                 target_datetime = et_tz.localize(
@@ -321,206 +357,212 @@ def calculate_sleep_time(current_time, jobs):
                     continue
                     
                 next_run_times.append(target_datetime)
-                # logger.info(f"Next run for {job.job_func.__name__}: {target_datetime} ET")
                 
         except Exception as e:
             logger.error(f"Error getting next run time for job: {e}")
             continue
-    
-    if not next_run_times:
-        logger.info("No valid next run times found")
-        return 1.0
     
     # Constants
     MAX_SLEEP = 60  # Maximum sleep time of 60 seconds
     BUFFER_TIME = 2  # Wake up 2 seconds before job
     MIN_SLEEP = 0.1  # Minimum sleep time
     
-    # Find earliest next run time
-    next_run = min(next_run_times)
+    if next_run_times:
+        # Find earliest next run time
+        next_run = min(next_run_times)
+        
+        # Ensure current_time is timezone aware
+        if current_time.tzinfo is None:
+            current_time = et_tz.localize(current_time)
+        
+        time_until_next_job = (next_run - current_time).total_seconds()
+        
+        if time_until_next_job > BUFFER_TIME:
+            sleep_time = min(time_until_next_job - BUFFER_TIME, MAX_SLEEP)
+        else:
+            sleep_time = MIN_SLEEP
+            
+        return sleep_time
     
-    # Ensure current_time is timezone aware
-    if current_time.tzinfo is None:
-        current_time = et_tz.localize(current_time)
+    # If we get here, today's jobs are done
+    return 60  # Sleep for 60 seconds before checking next day
+
+def initialize_market_schedule(max_retries=3):
+    """Initialize market schedule with retry logic"""
+    global market_schedule
+    market_schedule = pd.DataFrame()
     
-    # Log times in ET for debugging
-    # logger.info(f"Next run (ET): {next_run.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-    # logger.info(f"Current time (ET): {current_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    for retry_count in range(max_retries):
+        try:
+            refresh_market_schedule()
+            if len(market_schedule) > 0:
+                return True
+            logger.warning(f"Retry {retry_count + 1}: Market schedule empty")
+        except Exception as e:
+            logger.error(f"Market schedule initialization attempt {retry_count + 1} failed: {e}")
+        time_lib.sleep(5)
+    return False
+
+def get_market_times(market_schedule, today):
+    """Calculate market-related times for scheduling"""
+    times = {
+        'schedule_refresh': "00:05:00",
+        'screener': "00:10:00",
+        'premarket': "09:29:30",
+        'market_open': "09:30:00",
+        'market_close': "15:59:40"
+    }
     
-    time_until_next_job = (next_run - current_time).total_seconds()
+    if not market_schedule.empty:
+        today_schedule = market_schedule[market_schedule.index.date == today.date()]
+        if not today_schedule.empty:
+            market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+            market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
+            
+            times.update({
+                'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
+                'market_open': market_open.strftime("%H:%M:%S"),
+                'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
+            })
+    return times
+
+def schedule_daily_jobs(times):
+    """Schedule all daily jobs"""
+    jobs = [
+        (times['schedule_refresh'], refresh_market_schedule),
+        (times['screener'], run_daily_screener),
+        (times['premarket'], schedule_premarket_screener),
+        (times['market_open'], run_trading_strategy),
+        (times['market_close'], close_end_of_day_positions)
+    ]
     
-    if time_until_next_job > BUFFER_TIME:
-        sleep_time = min(time_until_next_job - BUFFER_TIME, MAX_SLEEP)
+    for time, func in jobs:
+        schedule_in_et(time, func)
+    
+    logger.info("Trading bot initialized and scheduled (all times ET):")
+    for (time, func) in jobs:
+        logger.info(f"- {func.__name__}: {time} ET")
+
+def log_bot_status(current_time, jobs):
+    """Log bot status and next scheduled job"""
+    if current_time.minute == 0:  # Hourly status update
+        logger.info("Bot is running - Active Trading Day")
+    
+    # Log next scheduled job (every minute for now)
+    if jobs:
+        next_jobs = []
+        for job in jobs:
+            target_time = getattr(job.job_func, 'target_time', None)
+            if target_time:
+                job_time = datetime.strptime(target_time, "%H:%M:%S").time()
+                next_jobs.append((job_time, job.job_func.__name__))
+        
+        if next_jobs:
+            next_time, next_job = min(next_jobs)
+            logger.info(f"Next scheduled job: {next_job} at {next_time}")
     else:
-        sleep_time = MIN_SLEEP
+        logger.info("No jobs currently scheduled")
+
+def schedule_in_et(time_str, func):
+    """Schedule a job to run at a specific time in ET
     
-    # logger.info(f"Time until next job: {time_until_next_job:.1f}s")
-    # logger.info(f"Sleeping for: {sleep_time:.1f}s")
-    
-    return sleep_time
+    Args:
+        time_str (str): Time in format "HH:MM:SS" in ET
+        func: Function to schedule
+    """
+    try:
+        # Store the target time as an attribute of the function
+        func.target_time = time_str
+        
+        # Convert ET time to local time for scheduler
+        et_tz = pytz.timezone('US/Eastern')
+        local_tz = datetime.now().astimezone().tzinfo
+        
+        # Parse the ET time
+        et_time = datetime.strptime(time_str, "%H:%M:%S")
+        et_time = et_tz.localize(datetime.combine(datetime.now().date(), et_time.time()))
+        
+        # Convert to local time
+        local_time = et_time.astimezone(local_tz)
+        local_time_str = local_time.strftime("%H:%M:%S")
+        
+        # Schedule the job using local time
+        scheduler.every().day.at(local_time_str).do(func)
+        logger.debug(f"Scheduled {func.__name__} for {time_str} ET ({local_time_str} local)")
+        
+    except Exception as e:
+        logger.error(f"Failed to schedule {func.__name__} for {time_str} ET: {str(e)}")
+        logger.error(traceback.format_exc())
 
 def main():
-    global logger  # Add this line to access global logger
+    global logger
     et_tz = pytz.timezone('US/Eastern')
-    current_log_date = datetime.now(et_tz).strftime("%Y%m%d")
-    
-    # Initialize logger if not already done
-    if logger is None:
-        logger = setup_logging()
+    logger = setup_logging()
     
     if sys.platform == 'darwin':
         setup_power_management()
     
-    def schedule_in_et(job_time, job_func):
-        """Schedule a job using Eastern Time with second precision"""
-        et_tz = pytz.timezone('US/Eastern')
-        
-        def job_wrapper():
-            try:
-                # Get current time in ET
-                current_et = datetime.now(et_tz)
-                current_et_time = current_et.strftime("%H:%M:%S")
-                
-                # Convert job_time to today's date in ET
-                job_datetime = datetime.strptime(job_time, "%H:%M:%S")
-                today_et = current_et.date()
-                job_datetime = et_tz.localize(
-                    datetime.combine(today_et, job_datetime.time())
-                )
-                
-                # Calculate time difference
-                time_diff = abs((current_et - job_datetime).total_seconds())
-                
-                if time_diff <= 5:  # + or - 5 second window
-                    logger.info(f"Attempting to execute {job_func.__name__} at {current_et_time} ET")
-                    with job_lock:
-                        logger.info(f"Executing {job_func.__name__} at {current_et_time} ET")
-                        result = job_func()
-                        logger.info(f"Completed {job_func.__name__}")
-                    
-            except Exception as e:
-                logger.error(f"Error in job {job_func.__name__}: {str(e)}")
-                logger.error(traceback.format_exc())
-
-        # Store the target time for logging
-        job_wrapper.target_time = job_time
-        
-        # Schedule the job with the scheduler
-        return scheduler.every(1).seconds.do(job_wrapper)
+    # Initialize market schedule
+    if not initialize_market_schedule():
+        logger.error("Failed to initialize market schedule after max retries")
+        return
     
-    # Initialize market_schedule with retry
-    max_retries = 3
-    retry_count = 0
-    
-    while retry_count < max_retries:
-        try:
-            global market_schedule
-            market_schedule = pd.DataFrame()
-            refresh_market_schedule()
-            if len(market_schedule) > 0:
-                break
-            retry_count += 1
-            time_lib.sleep(5)
-        except Exception as e:
-            logger.error(f"Market schedule initialization attempt {retry_count} failed: {str(e)}")
-            retry_count += 1
-            time_lib.sleep(5)
+    # Initial setup
+    today = datetime.now(et_tz)
+    last_date_checked = today.date()
+    last_resource_log = time_lib.time()
+    resource_log_interval = 300  # 5 minutes
     
     # Check if today is a market date
-    today = datetime.now(et_tz)
-    logger.info(f"is_market_date: {is_market_date(market_schedule, today)}")
-    
     if not is_market_date(market_schedule, today):
-        logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day. No jobs will be scheduled.")
-        while True:     
-            # Optionally log that the bot is still running
-            if datetime.now().minute == 0:  # Log once per hour
+        logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day")
+        while True:
+            if datetime.now().minute == 0:
                 logger.info("Bot is running - Waiting for next trading day")
-            time_lib.sleep(60)  # Sleep for 1 minute
+            time_lib.sleep(60)
         return
-
-    # If it is a market day, schedule all jobs
-    screener_time = "00:10:00"
-
-    # FOR TESTING
-    # if today.date() == datetime(2024, 12, 2).date():
-    #     screener_time = "00:25:30"
-    #     premarket_time = "09:29:00"
-    #     market_open_time = "11:25:00"  # 20 seconds before 9:30
-    #     market_close_time = "15:59:40"  # 20 seconds before 16:00
-
-    if len(market_schedule) > 0:
-        # Check if the DataFrame is empty
-        if market_schedule.empty:
-            logger.error("Market schedule is empty. Cannot proceed.")
-            return
-
-        # Use the index to filter for today's schedule
-        today_schedule = market_schedule[market_schedule.index.date == today.date()]
-
-        # Check if today_schedule is empty
-        if today_schedule.empty:
-            logger.warning(f"No market schedule found for today ({today.date()}).")
-        else:
-            market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-            market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
-        
-        # Calculate times 20 seconds before market events
-        premarket_time = (market_open - timedelta(seconds=30)).strftime("%H:%M:%S")
-        market_open_time = market_open.strftime("%H:%M:%S")
-        market_close_time = (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
-    else:
-        logger.warning("Using default market times due to schedule initialization failure")
-        premarket_time = "09:29:30"
-        market_open_time = "09:30:00"  # 20 seconds before 9:30
-        market_close_time = "15:59:40"  # 20 seconds before 16:00
-        
     
-    # Schedule all jobs with second precision
-    schedule_in_et("00:05:00", refresh_market_schedule)
-    schedule_in_et(screener_time, run_daily_screener)
-    schedule_in_et(premarket_time, schedule_premarket_screener)
-    schedule_in_et(market_open_time, run_trading_strategy)
-    schedule_in_et(market_close_time, close_end_of_day_positions)
-    
-    logger.info("Trading bot initialized and scheduled (all times ET):")
-    logger.info(f"- Schedule Refresh: 00:05:00 ET")
-    logger.info(f"- Daily Screener: {screener_time} ET")
-    logger.info(f"- Pre-market Screener: {premarket_time} ET")
-    logger.info(f"- Trading Strategy: {market_open_time} ET")
-    logger.info(f"- Position Closing: {market_close_time} ET")
+    # Schedule initial jobs
+    market_times = get_market_times(market_schedule, today)
+    schedule_daily_jobs(market_times)
     logger.info(f"Current ET time: {datetime.now(et_tz).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     
-    # Main loop with adaptive sleep
-    last_resource_log = time_lib.time()
-    resource_log_interval = 300  # Log resources every 5 minutes
-    
+    # Main loop
     while True:
         try:
-            # Ensure current_time is timezone aware
             current_time = datetime.now(et_tz)
             
-            # Get all scheduled jobs
-            jobs = scheduler.get_jobs()
+            # Check for day change
+            if current_time.date() != last_date_checked:
+                logger.info(f"New day detected: {current_time.date()}")
+                refresh_market_schedule()
+                
+                if is_market_date(market_schedule, current_time):
+                    logger.info("Scheduling jobs for new trading day")
+                    scheduler.clear()
+                    market_times = get_market_times(market_schedule, current_time)
+                    schedule_daily_jobs(market_times)
+                
+                last_date_checked = current_time.date()
             
-            # Calculate and execute sleep
+            # Get and process jobs
+            jobs = scheduler.get_jobs()
+            log_bot_status(current_time, jobs)
+            
+            # Sleep and run jobs
             sleep_time = calculate_sleep_time(current_time, jobs)
             time_lib.sleep(sleep_time)
-            
-            # Run pending jobs
             scheduler.run_pending()
             
-            # Log resource usage periodically
-            current_time = time_lib.time()
-            if current_time - last_resource_log >= resource_log_interval:
-                # log_resource_usage()
-                last_resource_log = current_time
-                gc.collect()  # Periodic garbage collection
-            
+            # Periodic maintenance
+            if time_lib.time() - last_resource_log >= resource_log_interval:
+                gc.collect()
+                last_resource_log = time_lib.time()
+                
         except Exception as e:
-            logger.error(f"Error in main loop: {str(e)}")
+            logger.error(f"Error in main loop: {e}")
             logger.error(traceback.format_exc())
-            time_lib.sleep(5)  # Wait before retrying
+            time_lib.sleep(5)
 
 if __name__ == "__main__":
     main() 
