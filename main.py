@@ -445,23 +445,24 @@ def schedule_daily_jobs(times):
 
 def log_bot_status(current_time, jobs):
     """Log bot status and next scheduled job"""
-    if current_time.minute == 0:  # Hourly status update
+    # Only log status updates at the top of each hour
+    if current_time.minute == 0:
         logger.info("Bot is running - Active Trading Day")
-    
-    # Log next scheduled job (every minute for now)
-    if jobs:
-        next_jobs = []
-        for job in jobs:
-            target_time = getattr(job.job_func, 'target_time', None)
-            if target_time:
-                job_time = datetime.strptime(target_time, "%H:%M:%S").time()
-                next_jobs.append((job_time, job.job_func.__name__))
         
-        if next_jobs:
-            next_time, next_job = min(next_jobs)
-            logger.info(f"Next scheduled job: {next_job} at {next_time}")
-    else:
-        logger.info("No jobs currently scheduled")
+        # Log next scheduled job (hourly)
+        if jobs:
+            next_jobs = []
+            for job in jobs:
+                target_time = getattr(job.job_func, 'target_time', None)
+                if target_time:
+                    job_time = datetime.strptime(target_time, "%H:%M:%S").time()
+                    next_jobs.append((job_time, job.job_func.__name__))
+            
+            if next_jobs:
+                next_time, next_job = min(next_jobs)
+                logger.info(f"Next scheduled job: {next_job} at {next_time}")
+        else:
+            logger.info("No jobs currently scheduled")
 
 def schedule_in_et(time_str, func):
     """Schedule a job to run at a specific time in ET
