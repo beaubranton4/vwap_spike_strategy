@@ -30,9 +30,8 @@ def setup_logging():
     if logger.handlers:
         return logger
     
-    # Prevent propagation to root logger to avoid duplicate messages
+    # Prevent propagation to root logger
     logger.propagate = False
-        
     logger.setLevel(logging.INFO)
     
     # Create log directory if it doesn't exist
@@ -41,7 +40,8 @@ def setup_logging():
     
     # Get current ET date for log file name
     et_tz = pytz.timezone('US/Eastern')
-    current_et_date = datetime.now(et_tz).strftime("%Y%m%d")
+    current_et = datetime.now(et_tz)  # Get current ET time
+    current_et_date = current_et.strftime("%Y%m%d")
     log_file = f"{log_dir}/{current_et_date}.log"
     
     # Create custom formatter that converts to ET
@@ -57,29 +57,25 @@ def setup_logging():
                 return dt.strftime(datefmt)
             return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
     
-    # Create formatter with ET timezone
     formatter = ETFormatter('%(asctime)s - %(levelname)s - %(message)s')
     
-    # Create TimedRotatingFileHandler
+    # Create TimedRotatingFileHandler with ET midnight rotation
     file_handler = TimedRotatingFileHandler(
         filename=log_file,
         when='midnight',
         interval=1,
-        backupCount=7,  # Keep 7 days of logs
+        backupCount=7,
         encoding='utf-8',
-        utc=True  # Use UTC internally (we'll adjust for ET)
+        utc=False  # Changed to False since we'll handle ET conversion
     )
     
-    # Calculate ET midnight in UTC for rotation
-    et_midnight = datetime.now(et_tz).replace(hour=0, minute=0, second=0, microsecond=0)
-    et_midnight_utc = et_midnight.astimezone(pytz.UTC)
-    file_handler.rolloverAt = int(et_midnight_utc.timestamp()) + 24*60*60  # Next midnight ET
+    # Calculate next ET midnight for rotation
+    next_midnight = current_et.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    file_handler.rolloverAt = int(next_midnight.timestamp())
     
-    # Custom namer function to use ET date
+    # Custom namer function using ET time
     def namer(default_name):
-        # Extract the date part from default_name
-        dt = datetime.now(et_tz)
-        return f"{log_dir}/{dt.strftime('%Y%m%d')}.log"
+        return f"{log_dir}/{datetime.now(et_tz).strftime('%Y%m%d')}.log"
     
     file_handler.namer = namer
     file_handler.setFormatter(formatter)
@@ -88,7 +84,7 @@ def setup_logging():
     # Add handlers
     logger.addHandler(file_handler)
     
-    # Add console handler for terminal output
+    # Add console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
@@ -407,23 +403,23 @@ def get_market_times(market_schedule, today):
     """Calculate market-related times for scheduling"""
     times = {
         'schedule_refresh': "00:05:00",
-        'screener': "00:10:00",
+        'screener': "16:58:45",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
         'market_close': "15:59:40"
     }
     
-    if not market_schedule.empty:
-        today_schedule = market_schedule[market_schedule.index.date == today.date()]
-        if not today_schedule.empty:
-            market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-            market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
+    # if not market_schedule.empty:
+    #     today_schedule = market_schedule[market_schedule.index.date == today.date()]
+    #     if not today_schedule.empty:
+    #         market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+    #         market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
-            times.update({
-                'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
-                'market_open': market_open.strftime("%H:%M:%S"),
-                'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
-            })
+    #         times.update({
+    #             'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
+    #             'market_open': market_open.strftime("%H:%M:%S"),
+    #             'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
+    #         })
     return times
 
 def schedule_daily_jobs(times):
@@ -447,6 +443,7 @@ def log_bot_status(current_time, jobs):
     """Log bot status and next scheduled job"""
     # Only log status updates at the top of each hour
     if current_time.minute == 0:
+        et_tz = pytz.timezone('US/Eastern')
         logger.info("Bot is running - Active Trading Day")
         
         # Log next scheduled job (hourly)
@@ -455,12 +452,29 @@ def log_bot_status(current_time, jobs):
             for job in jobs:
                 target_time = getattr(job.job_func, 'target_time', None)
                 if target_time:
+                    # Parse target time
                     job_time = datetime.strptime(target_time, "%H:%M:%S").time()
-                    next_jobs.append((job_time, job.job_func.__name__))
+                    
+                    # Combine with today's date
+                    job_datetime = datetime.combine(current_time.date(), job_time)
+                    job_datetime = et_tz.localize(job_datetime)
+                    
+                    # If this job time has passed today, schedule it for tomorrow
+                    if job_datetime <= current_time:
+                        job_datetime += timedelta(days=1)
+                    
+                    next_jobs.append((job_datetime, job.job_func.__name__))
             
             if next_jobs:
-                next_time, next_job = min(next_jobs)
-                logger.info(f"Next scheduled job: {next_job} at {next_time}")
+                # Get the next job (earliest future job)
+                next_time, next_job = min(next_jobs, key=lambda x: x[0])
+                time_until = next_time - current_time
+                logger.info(
+                    f"Next scheduled job: {next_job} at {next_time.strftime('%Y-%m-%d %H:%M:%S')} ET "
+                    f"(in {time_until.total_seconds()/3600:.1f} hours)"
+                )
+            else:
+                logger.info("No more jobs scheduled")
         else:
             logger.info("No jobs currently scheduled")
 

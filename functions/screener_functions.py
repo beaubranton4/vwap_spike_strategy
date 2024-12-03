@@ -24,6 +24,53 @@ from datetime import datetime, time
 import logging
 import pytz
 
+def setup_screener_logging():
+    """Setup logging for screener functions with ET date-based log file"""
+    logger = logging.getLogger(__name__)
+    
+    # If the logger already has handlers, assume it's configured
+    if logger.handlers:
+        return logger
+    
+    # Prevent propagation to root logger
+    logger.propagate = False
+    logger.setLevel(logging.INFO)
+    
+    # Create log directory if it doesn't exist
+    log_dir = "logs/screener"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Get current ET date for log file name
+    et_tz = pytz.timezone('US/Eastern')
+    current_et = datetime.now(et_tz)
+    current_et_date = current_et.strftime("%Y%m%d")
+    log_file = f"{log_dir}/{current_et_date}.log"
+    
+    # Create custom formatter that converts to ET
+    class ETFormatter(logging.Formatter):
+        def converter(self, timestamp):
+            dt = datetime.fromtimestamp(timestamp)
+            et_tz = pytz.timezone('US/Eastern')
+            return dt.astimezone(et_tz)
+        
+        def formatTime(self, record, datefmt=None):
+            dt = self.converter(record.created)
+            if datefmt:
+                return dt.strftime(datefmt)
+            return dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+    
+    formatter = ETFormatter('%(asctime)s - %(levelname)s - %(message)s')
+    
+    # Create file handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setFormatter(formatter)
+    file_handler.setLevel(logging.INFO)
+    
+    # Add handlers
+    logger.addHandler(file_handler)
+    
+    return logger
+
 def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest, 
                            period_type, period, frequency_type, frequency,
                            start_time, end_time, need_extended_hours_data, 
@@ -59,8 +106,11 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     Returns:
         pd.DataFrame: DataFrame containing screener results
     """
+    logger = setup_screener_logging()
+    start_clock = datetime.now()
     
-    start_clock = datetime.now()  # calculate run time
+    logger.info("Starting VWAP spike screener")
+    logger.info(f"Processing {len(ticker_list)} tickers for date {day_of_backtest}")
     
     # Get tickers list
     if 'Ticker' not in ticker_list.columns:
@@ -85,8 +135,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         chunk_end = min(chunk_start + CHUNK_SIZE, len(all_tickers))
         current_tickers = all_tickers[chunk_start:chunk_end]
         
-        print(f"\nProcessing chunk {chunk_start//CHUNK_SIZE + 1} of {(len(all_tickers) + CHUNK_SIZE - 1)//CHUNK_SIZE}")
-        print(f"Tickers {chunk_start + 1} to {chunk_end} of {len(all_tickers)}")
+        logger.info(f"Processing chunk {chunk_start//CHUNK_SIZE + 1} of {(len(all_tickers) + CHUNK_SIZE - 1)//CHUNK_SIZE}")
+        logger.info(f"Tickers {chunk_start + 1} to {chunk_end} of {len(all_tickers)}")
         
         # Initialize chunk stockies
         stockies = {}  # Create dataframes of stock data for iteration
@@ -180,7 +230,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                 # print(f"{ticker} processed successfully.")
                 
             except Exception as e:
-                print(f"Error processing {ticker}: {str(e)}")
+                logger.error(f"Error processing {ticker}: {str(e)}")
                 continue
         
         # Process strategies for current chunk
@@ -188,7 +238,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         COMBO_INDEXER = 0
         
         for strategy in combinations:
-            print(strategy,(datetime.now() - start_clock))
+            logger.info(strategy,(datetime.now() - start_clock))
             chunk_tickers = list(stockies.keys())
             for ticker in chunk_tickers:
 
@@ -264,15 +314,16 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         
         # Clear chunk data to free memory
         del stockies
-        print(f"Completed chunk {chunk_start//CHUNK_SIZE + 1}. Current results: {len(stocks_to_trade)} stocks")
+        logger.info(f"Completed chunk {chunk_start//CHUNK_SIZE + 1}. Current results: {len(stocks_to_trade)} stocks")
     
     # Save final results
     output_date = next_business_day(day_of_backtest)
     output_file_path = 'screener/daily_screener_signals/' + str(output_date) + '.csv'
     stocks_to_trade.to_csv(output_file_path, index=True, header=True)
 
-    print(datetime.now() - start_clock)
-    print('Completed Screener Successfully')
+    runtime = datetime.now() - start_clock
+    logger.info(f"VWAP spike screener completed in {runtime}")
+    logger.info(f"Found {len(stocks_to_trade)} potential trades")
     
     return stocks_to_trade
 
@@ -281,7 +332,11 @@ def run_premarket_screener(client, symbols_df):
     Check if premarket highs exceed yesterday's high for a list of symbols.
     Returns the original DataFrame with rows removed where premarket high exceeded yesterday's high.
     """
-    logger = logging.getLogger(__name__)
+    logger = setup_screener_logging()
+    start_time = datetime.now()
+    
+    logger.info("Starting premarket screener")
+    logger.info(f"Processing {len(symbols_df)} symbols")
     
     # Create a copy of the original DataFrame to avoid modifying the input
     filtered_df = symbols_df.copy()
@@ -345,7 +400,7 @@ def run_premarket_screener(client, symbols_df):
             
             # Remove symbols where premarket high exceeds yesterday's high
             if premarket_high > yesterday_high:
-                print(f"Removing {symbol}: premarket high ({premarket_high}) > yesterday high ({yesterday_high})")
+                logger.info(f"Removing {symbol}: premarket high ({premarket_high}) > yesterday high ({yesterday_high})")
                 symbols_to_remove.append(symbol)
             
         except Exception as e:
@@ -362,6 +417,11 @@ def run_premarket_screener(client, symbols_df):
 
     output = calculate_shares(client, filtered_df, ALLOCATION)
     output.to_csv('screener/premarket_screener_signals/' + str(datetime.now().date()) + '.csv', index=False)
+    runtime = datetime.now() - start_time
+    logger.info(f"Premarket screener completed in {runtime}")
+    logger.info(f"Removed {len(symbols_to_remove)} symbols")
+    logger.info(f"Remaining symbols: {len(filtered_df)}")
+    
     return output
 
 def calculate_shares(client, df, allocation):
@@ -378,7 +438,7 @@ def calculate_shares(client, df, allocation):
     """
     try:
         # Get cash balance from Schwab
-        cash_balance = float(get_cash_balance(client))/2 #make this -1000 instead of dividing by 2 when ready
+        cash_balance = float(get_cash_balance(client))-1000 #make this -1000 instead of dividing by 2 when ready
         
         # Calculate the two limits
         allocation_limit = cash_balance * allocation
