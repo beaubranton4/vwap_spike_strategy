@@ -238,7 +238,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         COMBO_INDEXER = 0
         
         for strategy in combinations:
-            logger.info(strategy,(datetime.now() - start_clock))
+            logger.info(f"Strategy parameters: {strategy}, Runtime: {datetime.now() - start_clock}")
             chunk_tickers = list(stockies.keys())
             for ticker in chunk_tickers:
 

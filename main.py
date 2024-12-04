@@ -40,7 +40,7 @@ def setup_logging():
     
     # Get current ET date for log file name
     et_tz = pytz.timezone('US/Eastern')
-    current_et = datetime.now(et_tz)  # Get current ET time
+    current_et = datetime.now(et_tz)
     current_et_date = current_et.strftime("%Y%m%d")
     log_file = f"{log_dir}/{current_et_date}.log"
     
@@ -66,18 +66,28 @@ def setup_logging():
         interval=1,
         backupCount=7,
         encoding='utf-8',
-        utc=False  # Changed to False since we'll handle ET conversion
+        utc=True  # Changed back to True for consistent UTC handling
     )
     
     # Calculate next ET midnight for rotation
     next_midnight = current_et.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    file_handler.rolloverAt = int(next_midnight.timestamp())
+    next_midnight_utc = next_midnight.astimezone(pytz.UTC)
+    file_handler.rolloverAt = int(next_midnight_utc.timestamp())
     
     # Custom namer function using ET time
     def namer(default_name):
-        return f"{log_dir}/{datetime.now(et_tz).strftime('%Y%m%d')}.log"
+        # Get current ET time at the moment of rotation
+        et_now = datetime.now(et_tz)
+        # Use the current ET date for the log file name
+        return f"{log_dir}/{et_now.strftime('%Y%m%d')}.log"
+    
+    # Custom rotator function
+    def rotator(source, dest):
+        # Don't do anything with the source file
+        pass
     
     file_handler.namer = namer
+    file_handler.rotator = rotator
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
     
@@ -157,6 +167,8 @@ def is_market_date(schedule_input: pd.DataFrame, check_date: datetime = None) ->
 
 def run_daily_screener():
     """Run at 12:01 ET """
+    global logger
+    
     try:
         # Check yesterday's date
         last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
@@ -200,6 +212,9 @@ def run_daily_screener():
 
 def schedule_premarket_screener():
     """Run 1 minute before market open"""
+
+    global logger
+    
     try:
             
         logger.info("Starting pre-market screener...")
@@ -232,6 +247,9 @@ def schedule_premarket_screener():
 
 def run_trading_strategy():
     """Run at market open"""
+
+    global logger
+    
     try:
             
         logger.info("Starting trading strategy...")
@@ -256,6 +274,9 @@ def run_trading_strategy():
 
 def refresh_market_schedule():
     """Refresh the market schedule at midnight ET"""
+
+    global logger
+    
     try:
         global market_schedule
         et_tz = pytz.timezone('US/Eastern')
@@ -273,6 +294,9 @@ def refresh_market_schedule():
 
 def close_end_of_day_positions():
     """Close all positions at market close"""
+
+    global logger
+
     try:
         today = datetime.now(pytz.timezone('US/Eastern'))
             
@@ -299,6 +323,9 @@ def close_end_of_day_positions():
 
 def calculate_sleep_time(current_time, jobs):
     """Calculate the appropriate sleep time based on the next scheduled job"""
+
+    global logger
+
     et_tz = pytz.timezone('US/Eastern')
     
     # If no jobs, check if we should wait for next trading day
@@ -406,7 +433,7 @@ def get_market_times(market_schedule, today):
         'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
-        'market_close': "15:59:40"
+        'market_close': "15:59:45"
     }
     
     if not market_schedule.empty:
