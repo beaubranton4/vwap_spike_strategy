@@ -403,23 +403,23 @@ def get_market_times(market_schedule, today):
     """Calculate market-related times for scheduling"""
     times = {
         'schedule_refresh': "00:05:00",
-        'screener': "16:58:45",
+        'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
         'market_close': "15:59:40"
     }
     
-    # if not market_schedule.empty:
-    #     today_schedule = market_schedule[market_schedule.index.date == today.date()]
-    #     if not today_schedule.empty:
-    #         market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
-    #         market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
+    if not market_schedule.empty:
+        today_schedule = market_schedule[market_schedule.index.date == today.date()]
+        if not today_schedule.empty:
+            market_open = today_schedule.iloc[0]['market_open'].tz_convert('US/Eastern')
+            market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
-    #         times.update({
-    #             'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
-    #             'market_open': market_open.strftime("%H:%M:%S"),
-    #             'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
-    #         })
+            times.update({
+                'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
+                'market_open': market_open.strftime("%H:%M:%S"),
+                'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
+            })
     return times
 
 def schedule_daily_jobs(times):
