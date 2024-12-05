@@ -1,6 +1,6 @@
 
 
-    - NEED TO INITALIZE THESE VARIABLES:
+    - NEED TO INITALIZE THESE VARIABLES in run_backtest.py:
 
     global ENTRY_PRICE
     global POSITION

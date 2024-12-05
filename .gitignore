@@ -5,6 +5,8 @@ secrets.json
 *tokens.json*
 logs/
 mock_stream/
+/backtest_results/
+backtest_results/*
 backtest/backtest_results/
 archive/
 trade_log/
@@ -14,3 +16,7 @@ screener/premarket_screener_signals/
 auth/
 *.DS_Store
 myenv/
+*.xlsx
+
+
+
