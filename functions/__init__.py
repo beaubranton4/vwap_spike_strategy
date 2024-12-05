@@ -40,6 +40,10 @@ from .execute_strategy import (
     ExecuteStrategy
 )
 
+from .run_backtest import (
+    run_vwap_spike_screener_backtest    
+)
+
 # Define __all__ to specify what is imported with *
 __all__ = [
 
@@ -73,5 +77,8 @@ __all__ = [
     'calculate_shares',
     
     # Strategy execution
-    'ExecuteStrategy'
+    'ExecuteStrategy',
+
+    #run_backtest
+    'run_vwap_spike_screener_backtest'
 ]

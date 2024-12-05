@@ -1,4 +1,3 @@
-
 from curses import start_color
 import pandas as pd
 import numpy as np
@@ -23,7 +22,7 @@ from datetime import datetime, time
 import logging
 import pytz
 
-def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest, 
+def run_vwap_spike_screener_backtest(client, ticker_list, combinations, 
                            period_type, period, frequency_type, frequency,
                            start_time, end_time, need_extended_hours_data, 
                            need_previous_close, rolling_lookback, 
@@ -37,7 +36,6 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         client (schwabdev.Client): Authenticated Schwab client
         ticker_list (pd.DataFrame): DataFrame containing ticker symbols to screen
         combinations (list): List of strategy parameter combinations to test
-        day_of_backtest (datetime): Date to run backtest for
         period_type (str): Time period type for historical data
         period (int): Number of periods for historical data
         frequency_type (str): Frequency type for historical data
@@ -59,7 +57,10 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         pd.DataFrame: DataFrame containing screener results
     """
     
-    start_clock = datetime.now()  # calculate run time
+    logger = logging.getLogger('main')
+    start_clock = datetime.now()
+    
+    logger.info(f"Starting VWAP spike screener with {len(ticker_list)} tickers")
     
     # Get tickers list
     if 'Ticker' not in ticker_list.columns:
@@ -70,6 +71,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
+
+    all_tickers = ['DQ']
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
 
@@ -112,6 +115,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     # Process current chunk of tickers
     for ticker in all_tickers:
         try:
+            logger.info(f"Processing {ticker}")
+            
             # Get stock price history using schwabdev
             stock_data = get_price_history_with_schwabdev(
                 client=client,
@@ -198,12 +203,13 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
             # print(f"{ticker} processed successfully.")
             
         except Exception as e:
-            print(f"Error processing {ticker}: {str(e)}")
+            logger.error(f"Error processing {ticker}: {str(e)}")
+            logger.error(traceback.format_exc())
             continue
 
     # Process strategies for current chunk
-    RESULT_INDEXER = len(stocks_to_trade)  # Start from current length of results
-    COMBO_INDEXER = 0
+    # RESULT_INDEXER = len(stocks_to_trade)  # Start from current length of results
+    # COMBO_INDEXER = 0
     
     for strategy in combinations:
         
@@ -436,7 +442,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         tick_list = tickers
         # Write each dataframe to a different worksheet.
         # results = pd.merge(results,tick_list[['Ticker','Market Capitalization','Sector','Shares Float']],on = 'Ticker', how = 'left')
-        results.to_excel(f'./backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.xlsx', index=False, header=True)
+        results.to_excel(f'backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.xlsx', index=False, header=True)
         input_indexer += 1
 
     ################################################### CLEAN OUTPUTS ####################################################
@@ -455,8 +461,19 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     # plot = px.line(results, x = results.index.values, y = 'Account Size', title = 'Equity Curve')
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
-    inputs.to_excel(f'./backtest_results/run_{run}_on_{current_date}.xlsx', index=True, header=True)
+    inputs.to_excel(f'backtest_results/run_{run}_on_{current_date}.xlsx', index=True, header=True)
     print(datetime.now() - start_color)
 
-
-
+    # Final summary
+    runtime = datetime.now() - start_clock
+    logger.info(f"VWAP spike screener completed in {runtime}")
+    logger.info(f"Total signals found: {SIGNALS}")
+    logger.info(f"Total buys executed: {BUYS}")
+    try:
+        win_rate = len(results[results['Win/Loss']=='Win'])/len(results['Win/Loss'])*100
+        avg_win = results['Profit %'].mean()*100
+        logger.info(f"Win rate: {win_rate:.1f}%, Average win: {avg_win:.1f}%")
+    except:
+        logger.info("No trades executed")
+    
+    return results
