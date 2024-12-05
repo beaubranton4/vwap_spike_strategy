@@ -1,9 +1,5 @@
 
     
-
-    - Create script that appends performance data to a file
-    - Add to main.py to run the performance script after the trades are made.
-    - How to up my allocation? Should i do 10% of portfolio every trade? and just limit to max of 10 trades? Ensure the check is working correctly
     ------------------------------------------------------------------------------------------------------
     
     - NEED TO INITALIZE THESE VARIABLES in run_backtest.py:
@@ -28,9 +24,6 @@
         - Other tactics to scale down cost:
             - savings plan
 
-    ------------------------------------------------------------------------------------------------------
-
-    - Create file to analyze performance of the strategy
 
 ------------------------------------------------------------------------------------------------------
 

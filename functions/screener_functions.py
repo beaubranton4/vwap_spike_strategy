@@ -446,6 +446,7 @@ def calculate_shares(client, df, allocation):
         
         # Take the smaller of the two limits
         position_size = min(allocation_limit, equal_distribution)
+        # position_size = allocation_limit
         
         # Calculate shares for each row
         df['Shares'] = (position_size / df['Target Entry']).apply(lambda x: int(x))
