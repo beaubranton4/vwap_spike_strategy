@@ -5,18 +5,17 @@ secrets.json
 *tokens.json*
 logs/
 mock_stream/
-/backtest_results/
-backtest_results/*
+backtest_results/
 backtest/backtest_results/
 archive/
 trade_log/
 screener/daily_screener_signals/
 screener/premarket_screener_signals/
-*.pem
+.pem
 auth/
-*.DS_Store
+.DS_Store
 myenv/
-*.xlsx
+.xlsx
 
 
 
