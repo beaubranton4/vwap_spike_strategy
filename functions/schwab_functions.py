@@ -10,7 +10,7 @@ from schwabdev import Client
 from typing import Dict
 import logging
 from functools import lru_cache
-import time
+import time as time_lib
 from functions import *
 from config import *
 import pandas as pd
@@ -176,7 +176,7 @@ def get_price_history_with_schwabdev(client, ticker, period_type, period, freque
                 return response.json()
             elif response.status_code == 401:  # Authentication error
                 logger.warning(f"Authentication error on attempt {attempt + 1} for {ticker}, retrying...")
-                time.sleep(retry_delay)
+                time_lib.sleep(retry_delay)
                 # Try to refresh tokens
                 try:
                     client.tokens.update_tokens()
@@ -185,14 +185,14 @@ def get_price_history_with_schwabdev(client, ticker, period_type, period, freque
             else:
                 logger.error(f"API error for {ticker}: {response.status_code} - {response.text}")
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
+                    time_lib.sleep(retry_delay)
                 else:
                     return None
                 
         except Exception as e:
             logger.error(f"Exception getting price history for {ticker} (attempt {attempt + 1}): {str(e)}")
             if attempt < max_retries - 1:
-                time.sleep(retry_delay)
+                time_lib.sleep(retry_delay)
             else:
                 return None
     

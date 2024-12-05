@@ -1,4 +1,16 @@
 
+
+    - NEED TO INITALIZE THESE VARIABLES:
+
+    global ENTRY_PRICE
+    global POSITION
+    global ENTRY_TIME
+    global ACCOUNT_SIZE
+    global BUYS
+    global RESULT_INDEXER
+    global BOUGHT_TODAY
+
+    Then pass in the variables to the function in backtest_functions.py
     -----------------------------------------------------------------------------------------------------
     
     - Test VM runs autonomously 24/7 to ensure no issues

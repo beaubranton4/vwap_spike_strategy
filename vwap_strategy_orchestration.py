@@ -58,10 +58,10 @@ def main():
     # tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     # today = datetime.now().strftime('%Y-%m-%d')
     
-    selected_date = '2024-12-03'  # Can be modified to any date in YYYY-MM-DD format
+    # selected_date = '2024-12-03'  # Can be modified to any date in YYYY-MM-DD format
     
     
-    screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
+    # screener_results = pd.read_csv(f'screener/daily_screener_signals/{selected_date}.csv')
     # print(f"Found {len(screener_results)} potential trades after daily screener")
 
     ############STEP 2: RUN PREMARKET SCREENER (9:29am PT)####################
@@ -70,8 +70,8 @@ def main():
 
     ############STEP 3: EXECUTE STRATEGY - STREAMER (9:30am PT)####################
     # premarket_screener_results = pd.read_csv(f'screener/premarket_screener_signals/{selected_date}.csv')
-    strategy = ExecuteStrategy(use_mock_data=False)
-    strategy.execute_vwap_spike_strategy(screener_results)
+    # strategy = ExecuteStrategy(use_mock_data=False)
+    # strategy.execute_vwap_spike_strategy(screener_results)
     
     
 if __name__ == "__main__":

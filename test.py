@@ -1,26 +1,32 @@
-import schedule as scheduler
-# import time as time_lib
-from datetime import datetime, timedelta
-import pytz
-import logging
-from pathlib import Path
-import pandas as pd
-import pandas_market_calendars as mcal
-from functions import *
-from config import *
-import threading
+# Standard library imports
 import os
-import subprocess
-import psutil
 import sys
-import logging
-import traceback
 import json
-import requests
-from schwabdev import Client
+import threading
+import traceback
+from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict
 
-logger = logging.getLogger(__name__)
+# Third-party imports
+import pytz
+import pandas as pd
+import pandas_market_calendars as mcal
+import requests
+import psutil
+import schedule as scheduler
+from schwabdev import Client
+
+# Local imports
+from config import *
+from functions import *
+from functions.manage_authentication import get_authenticated_client
+from functions.schwab_functions import get_price_history_with_schwabdev
+from functions.run_backtest import run_vwap_spike_screener_backtest
+
+# Logging setup
+import logging
+logger = logging.getLogger('main')
 
 def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
     """Print borrow info for all tickers and add data to dataframe"""
@@ -62,7 +68,10 @@ def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
 def main():
 
     
-    client = get_authenticated_client
+    client = get_authenticated_client()
+    # account_balance = get_account_balance(client)
+    # print(f"Account balance: {account_balance}")
+
 
     end_backtest_date = datetime.now()
     start_backtest_date = end_backtest_date - timedelta(days=30)
@@ -84,8 +93,8 @@ def main():
     # print(is_market_date(schedule, datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=4)))
     # Initialize client
     # client = get_authenticated_client()
-    df = pd.read_csv(f'screener/daily_screener_signals/2024-12-02.csv')
-    new_df = calculate_shares(client, df, ALLOCATION)
+    # df = pd.read_csv(f'screener/daily_screener_signals/2024-12-02.csv')
+    # new_df = calculate_shares(client, df, ALLOCATION)
     # new_df.to_csv('test_add.csv', index=False)
     # print(new_df)
 

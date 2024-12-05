@@ -60,7 +60,14 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     logger = logging.getLogger('main')
     start_clock = datetime.now()
     
-    logger.info(f"Starting VWAP spike screener with {len(ticker_list)} tickers")
+    # Initialize variables
+    input_indexer = 0  # Add this line
+    ACCOUNT_SIZE = 100000  # Add initial account size
+    SIGNALS = 0
+    BUYS = 0
+    strategy_note = ""  # Add this if needed
+    
+    logger.info(f"Starting VWAP spike screener backtest with {len(ticker_list)} tickers")
     
     # Get tickers list
     if 'Ticker' not in ticker_list.columns:
@@ -439,7 +446,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             inputs.at[input_indexer,'Win %'] = (len(results[results['Win/Loss']=='Win'])/len(results['Win/Loss']))
         except:
             pass
-        tick_list = tickers
+        # tick_list = tickers
         # Write each dataframe to a different worksheet.
         # results = pd.merge(results,tick_list[['Ticker','Market Capitalization','Sector','Shares Float']],on = 'Ticker', how = 'left')
         results.to_excel(f'backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.xlsx', index=False, header=True)
@@ -462,7 +469,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
     inputs.to_excel(f'backtest_results/run_{run}_on_{current_date}.xlsx', index=True, header=True)
-    print(datetime.now() - start_color)
+    print(datetime.now() - start_clock)
 
     # Final summary
     runtime = datetime.now() - start_clock
