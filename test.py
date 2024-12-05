@@ -65,26 +65,29 @@ def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
     return df
 
 
+
+
 def main():
 
     
     client = get_authenticated_client()
+    get_todays_trades(client)
     # account_balance = get_account_balance(client)
     # print(f"Account balance: {account_balance}")
 
 
-    end_backtest_date = datetime.now()
-    start_backtest_date = end_backtest_date - timedelta(days=30)
-    start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
-    end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
+    # end_backtest_date = datetime.now()
+    # start_backtest_date = end_backtest_date - timedelta(days=30)
+    # start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
+    # end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
 
-    run_vwap_spike_screener_backtest(client, ticker_list, combinations, 
-                            period_type, period, frequency_type, frequency,
-                            start_backtest_time, end_backtest_time, need_extended_hours_data,
-                            need_previous_close, rolling_lookback,
-                            price_spike_thresh_index, time_sig_thresh_index, buy_time_threshold_index,
-                            vol_spike_thresh_index, sell_time_threshold_index,
-                            stop_index, target_index)
+    # run_vwap_spike_screener_backtest(client, ticker_list, combinations, 
+    #                         period_type, period, frequency_type, frequency,
+    #                         start_backtest_time, end_backtest_time, need_extended_hours_data,
+    #                         need_previous_close, rolling_lookback,
+    #                         price_spike_thresh_index, time_sig_thresh_index, buy_time_threshold_index,
+    #                         vol_spike_thresh_index, sell_time_threshold_index,
+    #                         stop_index, target_index)
     
     # print(len(schedule))
     # next_biz_date = next_business_day(datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1))

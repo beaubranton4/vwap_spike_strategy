@@ -44,6 +44,11 @@ from .run_backtest import (
     run_vwap_spike_screener_backtest    
 )
 
+from .analyze_trades import (
+    get_todays_trades,
+    extract_trade_info
+)
+
 # Define __all__ to specify what is imported with *
 __all__ = [
 
@@ -80,5 +85,9 @@ __all__ = [
     'ExecuteStrategy',
 
     #run_backtest
-    'run_vwap_spike_screener_backtest'
+    'run_vwap_spike_screener_backtest',
+
+    # analyze_trades
+    'get_todays_trades',
+    'extract_trade_info'
 ]

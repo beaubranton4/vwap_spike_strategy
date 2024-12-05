@@ -314,6 +314,20 @@ def close_end_of_day_positions():
         logger.error(f"End-of-day position closing failed: {str(e)}")
         logger.error(traceback.format_exc())
 
+def run_trade_analysis():
+    """Run trade analysis for today's trades"""
+    
+    global logger
+    
+    try:
+        client = get_authenticated_client()
+        get_todays_trades(client)
+        logger.info("Successfully ran trade analysis for today")
+        
+    except Exception as e:
+        logger.error(f"Trade analysis failed: {str(e)}")
+        logger.error(traceback.format_exc())
+
 # def log_resource_usage():
 #     cpu_percent = psutil.cpu_percent(interval=1)
 #     memory_percent = psutil.virtual_memory().percent
@@ -431,7 +445,8 @@ def get_market_times(market_schedule, today):
         'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
-        'market_close': "15:59:45"
+        'market_close': "15:59:45",
+        'trade_analysis': "18:00:00"
     }
     
     if not market_schedule.empty:
@@ -454,7 +469,8 @@ def schedule_daily_jobs(times):
         (times['screener'], run_daily_screener),
         (times['premarket'], schedule_premarket_screener),
         (times['market_open'], run_trading_strategy),
-        (times['market_close'], close_end_of_day_positions)
+        (times['market_close'], close_end_of_day_positions),
+        (times['trade_analysis'], run_trade_analysis)
     ]
     
     for time, func in jobs:
