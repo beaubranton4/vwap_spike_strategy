@@ -23,14 +23,11 @@ logger = None  # Initialize global logger variable
 # Setup logging
 def setup_logging():
     """Setup logging with ET date-based log file that rotates at midnight ET"""
-    # Get the existing logger if it exists
     logger = logging.getLogger(__name__)
     
-    # If the logger already has handlers, assume it's configured
     if logger.handlers:
         return logger
     
-    # Prevent propagation to root logger
     logger.propagate = False
     logger.setLevel(logging.INFO)
     
@@ -44,7 +41,6 @@ def setup_logging():
     current_et_date = current_et.strftime("%Y%m%d")
     log_file = f"{log_dir}/{current_et_date}.log"
     
-    # Create custom formatter that converts to ET
     class ETFormatter(logging.Formatter):
         def converter(self, timestamp):
             dt = datetime.fromtimestamp(timestamp)
@@ -59,32 +55,34 @@ def setup_logging():
     
     formatter = ETFormatter('%(asctime)s - %(levelname)s - %(message)s')
     
-    # Create TimedRotatingFileHandler with ET midnight rotation
+    # Modified TimedRotatingFileHandler setup
     file_handler = TimedRotatingFileHandler(
         filename=log_file,
         when='midnight',
         interval=1,
         backupCount=7,
         encoding='utf-8',
-        utc=True  # Changed back to True for consistent UTC handling
+        utc=False  # Changed to False to use local time
     )
     
-    # Calculate next ET midnight for rotation
-    next_midnight = current_et.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-    next_midnight_utc = next_midnight.astimezone(pytz.UTC)
-    file_handler.rolloverAt = int(next_midnight_utc.timestamp())
+    # Calculate next ET midnight
+    next_midnight_et = (current_et.replace(hour=0, minute=0, second=0, microsecond=0) 
+                       + timedelta(days=1))
     
-    # Custom namer function using ET time
+    # Set the rollover time to ET midnight
+    file_handler.rolloverAt = int(next_midnight_et.timestamp())
+    
     def namer(default_name):
-        # Get current ET time at the moment of rotation
+        # Extract the date from the default name and format it correctly
         et_now = datetime.now(et_tz)
-        # Use the current ET date for the log file name
         return f"{log_dir}/{et_now.strftime('%Y%m%d')}.log"
     
-    # Custom rotator function
     def rotator(source, dest):
-        # Don't do anything with the source file
-        pass
+        # Implement custom rotation logic
+        if os.path.exists(source):
+            with open(source, 'r') as src, open(dest, 'w') as dst:
+                dst.write(src.read())
+            os.remove(source)
     
     file_handler.namer = namer
     file_handler.rotator = rotator
@@ -577,6 +575,12 @@ def main():
             # Check for day change
             if current_time.date() != last_date_checked:
                 logger.info(f"New day detected: {current_time.date()}")
+                
+                # Force log rotation check
+                for handler in logger.handlers:
+                    if isinstance(handler, TimedRotatingFileHandler):
+                        handler.doRollover()
+                
                 refresh_market_schedule()
                 
                 if is_market_date(market_schedule, current_time):

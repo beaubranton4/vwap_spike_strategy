@@ -499,11 +499,11 @@ class ExecuteStrategy:
                 self.streamer.base_prices = base_prices
             
             ####################### First track pre-market highs and filter stocks #######################
-            logger.info("Starting pre-market tracking phase...")
-            filtered_df = self.track_premarket_highs(df)
+            # logger.info("Starting pre-market tracking phase...")
+            # filtered_df = self.track_premarket_highs(df)
             
-            # Update streamer with filtered symbols
-            symbols = filtered_df['Ticker'].unique().tolist()
+            # # Update streamer with filtered symbols
+            # symbols = filtered_df['Ticker'].unique().tolist()
             
             ####################### Start the main trading stream #######################
             # Start the main trading stream

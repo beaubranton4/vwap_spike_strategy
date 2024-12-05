@@ -1,5 +1,10 @@
 
+    
 
+    - Create script that appends performance data to a file
+
+    -------
+    
     - NEED TO INITALIZE THESE VARIABLES in run_backtest.py:
 
     global ENTRY_PRICE
