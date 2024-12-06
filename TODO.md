@@ -1,3 +1,10 @@
+    --JBLU, AES, APLD WORKED
+    -- PPTA, and APP no buy on 12-05
+    -- GILT, no signal on 12-04 and no buy on 12-05
+
+    -- Fixing APLD:IF WE GET SIGNAL ON BACK TO BACK DAYS, THE BACKTEST WILL MISS THE SELL SIGNAL, b/c the ok_to_buy day will change to the next day and will not mark the close of the day as ok_to_buy.
+
+    
     --Fix backtest function. Is it correctly grabbing everything? is it the screener or the backtest that is the issue?
         -- there was definitely an issue with the open and close times, but those seem to be resolved? double check
         -- Next need to check the examples of the 2 stocks it does not grab, that we actually made a trade on.
@@ -10,18 +17,7 @@
 
     
     ------------------------------------------------------------------------------------------------------
-    
-    - NEED TO INITALIZE THESE VARIABLES in run_backtest.py:
-
-    global ENTRY_PRICE
-    global POSITION
-    global ENTRY_TIME
-    global ACCOUNT_SIZE
-    global BUYS
-    global RESULT_INDEXER
-    global BOUGHT_TODAY
-
-    Then pass in the variables to the function in backtest_functions.py
+    - Logging for end of day close. why didn't PYPL close the short?
     -----------------------------------------------------------------------------------------------------
     
     - Test VM runs autonomously 24/7 to ensure no issues

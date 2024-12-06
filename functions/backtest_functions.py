@@ -11,6 +11,7 @@ import logging
 
 # Third party imports
 import base64
+from venv import logger
 import numpy as np
 import pandas as pd
 import pandas_market_calendars as mcal
@@ -204,6 +205,7 @@ def buy_sell(signal,
         ENTRY_TIME = time
         ENTRY_PRICE = np.where(open_price>target_entry_price,open_price,target_entry_price)
         BUYS += 1
+        logger.info(f"Buy signal found for {ticker} on {date}")
 
     #SELL - Will calculate sell stats based on the signal using the calculate_sell_results function 
     elif ((signal == 'Sell (Target Hit)')
@@ -237,6 +239,7 @@ def buy_sell(signal,
         #results.at[RESULT_INDEXER,'Premarket Change'] = 
         BOUGHT_TODAY = date
         RESULT_INDEXER += 1
+        logger.info(f"Sell for {ticker} on {date}, Result #{RESULT_INDEXER}")
 
 def run_vwap_spike_screener_backtest(client, ticker_list, combinations, 
                            period_type, period, frequency_type, frequency,
@@ -310,9 +313,9 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # Extract date and time components
     open_close_schedule['Date'] = open_close_schedule['market_open'].dt.date
     open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
-    open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
-
-    print(open_close_schedule)
+    open_close_schedule['market_close'] = (open_close_schedule['market_close'] - pd.Timedelta(minutes=30)).dt.time
+    
+    # print(open_close_schedule)
 
     strategy_note = ""  # Add this if needed
     
@@ -537,7 +540,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             POSITION = 'Neutral'
 
             # Save stockies to see its structure 
-            stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
+            # stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
 
             # test = f'./test/backtest.xlsx'
             # stockies[ticker].to_excel(test, index=False, header=True)
@@ -562,9 +565,10 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     OK_TO_BUY_DAY = next_business_day(row['Date'])
                     SIGNALS += 1
                     PREVIOUS_DAY_CLOSE = row['Close']
-                
+                    logger.info(f"Signal found for {ticker} on {row['Date']}")
+
                 if (OK_TO_BUY_DAY == row['Date']):
-                    # print(f"Setting Ok_To_Buy for date: {row['Date']}")
+                    print(f"Setting Ok_To_Buy for date: {row['Date']}")
                     stockies[ticker].at[index,'Ok_To_Buy'] = 'True' 
                     stockies[ticker].at[index,'Previous_Day_Close'] = PREVIOUS_DAY_CLOSE
                     stockies[ticker].at[index,'Signal Time'] = SIGNAL_TIME
@@ -573,11 +577,11 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     stockies[ticker].at[index,'Yesterday High'] = YESTERDAY_HIGH
                     stockies[ticker].at[index,'Target_Entry_Price'] = TARGET_ENTRY_PRICE
 
-            stockies[ticker].to_csv('backtest_results/debugging/stockies.csv', index=False, header=True)
+            stockies[ticker].to_csv(f'backtest_results/debugging/stockies_{ticker}.csv', index=False, header=True)
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]
-            stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}_{input_indexer}.csv', index=True, header=True)
+            # stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
 
                 
             #Check that pre-market high wasn't higher than yesterday's high bar (in backtest)
@@ -620,6 +624,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 if signal == 'none':
                     continue
                 position_size = ACCOUNT_SIZE * strategy[bet_size_index]    
+                logger.info(f"1st signal: {signal} for {row['Date']}")
                 buy_sell(signal,
                         row['Date'],
                         row['Ticker'],
@@ -652,6 +657,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                                         row['Target_Entry_Price'])
                 if signal == 'none':
                     continue
+                logger.info(f"2nd signal: {signal} for {row['Date']}")
                 position_size = ACCOUNT_SIZE * strategy[bet_size_index]    
                 buy_sell(signal,
                         row['Date'],
@@ -674,7 +680,8 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             #results['Optimal Entry Time'] =stockies[results['Date']==stockies['Date']].groupby('Date')['High'].transform('max')
             #results['Optimal Exit Time'] =
             #results['Left On Table'] = ((results['Optimal Entry']*results['Bet Size'])-(results['Optimal Exit']*results['Bet Size']))-((results['Bet Size'])-(STOP*results['Bet Size']))
-        
+            
+            logger.info(f"Ticker: {ticker}, Buys: {BUYS}, Result Indexer: {RESULT_INDEXER}")
         inputs.at[input_indexer,'Account Size'] = ACCOUNT_SIZE
         inputs.at[input_indexer,'Bet_Size'] = strategy[bet_size_index]
         inputs.at[input_indexer,'Stop'] = strategy[stop_index]

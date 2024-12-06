@@ -76,11 +76,29 @@ def main():
     print(f"Account balance: {account_balance}")
 
 
-    end_backtest_date = datetime.now() + timedelta(days=1)
+    end_backtest_date = datetime.now() - timedelta(days=1)
     start_backtest_date = end_backtest_date - timedelta(days=30)
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
-
+    # print(combinations[sell_time_threshold_index])
+    # print("Backtest Parameters:")
+    # print("-" * 50)
+    # print(f"Start Backtest Time: {start_backtest_time}")
+    # print(f"End Backtest Time: {end_backtest_time}")
+    # print(f"Period Type: {period_type}")
+    # print(f"Period: {period}")
+    # print(f"Frequency Type: {frequency_type}")
+    # print(f"Frequency: {frequency}")
+    # print(f"Need Extended Hours Data: {need_extended_hours_data}")
+    # print(f"Need Previous Close: {need_previous_close}")
+    # print(f"Rolling Lookback: {rolling_lookback}")
+    # print(f"Price Spike Threshold Index: {price_spike_thresh_index}")
+    # print(f"Time Signal Threshold Index: {time_sig_thresh_index}")
+    # print(f"Buy Time Threshold Index: {buy_time_threshold_index}")
+    # print(f"Volume Spike Threshold Index: {vol_spike_thresh_index}")
+    # print(f"Sell Time Threshold Index: {sell_time_threshold_index}")
+    # print(f"Stop Index: {stop_index}")
+    # print(f"Target Index: {target_index}")
     run_vwap_spike_screener_backtest(client, ticker_list, combinations, 
                             period_type, period, frequency_type, frequency,
                             start_backtest_time, end_backtest_time, need_extended_hours_data,

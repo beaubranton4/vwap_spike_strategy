@@ -471,7 +471,7 @@ def get_market_times(market_schedule, today):
         'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
-        'market_close': "15:59:45",
+        'market_close': "15:59:40",
         'trade_analysis': "18:00:00"
     }
     
@@ -484,7 +484,7 @@ def get_market_times(market_schedule, today):
             times.update({
                 'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
                 'market_open': market_open.strftime("%H:%M:%S"),
-                'market_close': (market_close - timedelta(seconds=15)).strftime("%H:%M:%S")
+                'market_close': (market_close - timedelta(seconds=20)).strftime("%H:%M:%S")
             })
     return times
 

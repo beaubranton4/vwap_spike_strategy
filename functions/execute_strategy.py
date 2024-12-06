@@ -204,7 +204,7 @@ class ExecuteStrategy:
             market_close = schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
             # Get the time from the SELL_TIME_THRESHOLD list
-            sell_time = SELL_TIME_THRESHOLD[0]  # Get first (and presumably only) time object from list
+            sell_time = market_close # Get first (and presumably only) time object from list
                 
             # Get strategy cutoff time using appropriate time source
             if self.use_mock_data and hasattr(self, 'streamer'):
