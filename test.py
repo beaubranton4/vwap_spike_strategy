@@ -76,7 +76,7 @@ def main():
     print(f"Account balance: {account_balance}")
 
 
-    end_backtest_date = datetime.now()
+    end_backtest_date = datetime.now() + timedelta(days=1)
     start_backtest_date = end_backtest_date - timedelta(days=30)
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)

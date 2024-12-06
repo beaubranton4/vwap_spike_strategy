@@ -1,3 +1,12 @@
+    --Fix backtest function. Is it correctly grabbing everything? is it the screener or the backtest that is the issue?
+        -- there was definitely an issue with the open and close times, but those seem to be resolved? double check
+        -- Next need to check the examples of the 2 stocks it does not grab, that we actually made a trade on.
+            --
+    
+    -- it seems that my backtest was assuming that the market opens at 10:30, which was used to calculate the premarket high. So if the price crossed yesterday's high between 9:30 and 10:30, it was not being counted. Also theoretically impossible to execute on that.
+
+    But maybe that could be a sign too.
+
 
     
     ------------------------------------------------------------------------------------------------------

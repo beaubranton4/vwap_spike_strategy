@@ -6,6 +6,7 @@ import glob
 import pandas_market_calendars as mcal
 import schwabdev
 import itertools
+import pytz
 ######################################## LOADING SCHWAB API VARIABLES #########################################
 
 load_dotenv()  # Load environment variables from .env file
@@ -82,6 +83,7 @@ inputs = pd.DataFrame(columns=['Account Size',
 
 ########################################  TIME FRAME  ########################################
 # Set date parameters and calculations regarding dates such as 10 day rolling average volume
+
 en = datetime.now()  # SCREENER WILL RUN AS OF THIS DAY
 st = en - timedelta(days=20)
 
@@ -100,6 +102,28 @@ rolling_lookback = rolling_window_days * tickers_per_day
 
 # Find Next Business Day
 # Import the New York Stock Exchange Calendar
+ # Convert timestamps to ET datetime
+eastern = pytz.timezone('US/Eastern')
+start_of_backtest = datetime.fromtimestamp(int(start_time) / 1000).astimezone(eastern)
+end_of_backtest = datetime.fromtimestamp(int(end_time) / 1000).astimezone(eastern)
+
+# Get NYSE calendar schedule
+nyse = mcal.get_calendar('NYSE')
+open_close_schedule = pd.DataFrame(nyse.schedule(start_date=start_of_backtest, end_date=end_of_backtest))
+
+open_close_schedule.index.names = ['Date']
+open_close_schedule.reset_index(inplace=True)
+
+# Convert market times to ET
+open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.tz_convert('US/Eastern')
+open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.tz_convert('US/Eastern')
+
+# Extract date and time components
+open_close_schedule['Date'] = open_close_schedule['market_open'].dt.date
+open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
+open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
+
+
 nyse = mcal.get_calendar('NYSE')
 open_close_schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en))
 open_close_schedule.index.names = ['Date']

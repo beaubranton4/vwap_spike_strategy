@@ -153,7 +153,7 @@ def buy_sell_signal(signal,
 
 #Returns details for results table based on the type of sell signal (profit,exit,win/loss,type of sale)
 #might need entry_price passed in
-def calculate_sell_results(sell_signal,row_close,position_size,stop,target):
+def calculate_sell_results(signal, row_close,position_size,stop,target):
     
     if (signal == 'Sell (Stop Loss)'):
         profit = (position_size - (position_size*(1+stop)))
@@ -172,7 +172,7 @@ def calculate_sell_results(sell_signal,row_close,position_size,stop,target):
     if (signal == 'Sell (At Time Threshold)'):
         profit = (((ENTRY_PRICE-row_close)/ENTRY_PRICE)*position_size)
         exit = row_close
-        win_loss = np.where(((ENTRY_PRICE-row['Close'])/ENTRY_PRICE)>0,'Win','Loss')
+        win_loss = np.where(((ENTRY_PRICE-row_close)/ENTRY_PRICE)>0,'Win','Loss')
         sell_type = 'Sell (At Time Threshold)'
         return [profit,exit,win_loss,sell_type]
 
@@ -194,7 +194,9 @@ def buy_sell(signal,
              stop,
              target):
 
-    global POSITION, ENTRY_PRICE, ENTRY_TIME, BUYS, BOUGHT_TODAY  # Add BUYS here
+    global POSITION, ENTRY_PRICE, ENTRY_TIME, BUYS, BOUGHT_TODAY
+    global RESULT_INDEXER, ACCOUNT_SIZE
+    global results  # Add these globals
     
     #BUY - Currently the only buy signal, but could create function for the different buy types
     if (signal == 'Short (Target Price Cross)'):
@@ -277,8 +279,9 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     global ENTRY_PRICE, POSITION, ENTRY_TIME, ACCOUNT_SIZE, BUYS, RESULT_INDEXER, BOUGHT_TODAY
     global TEMP_SIGNAL_DAY, OK_TO_BUY_DAY, TARGET_ENTRY_PRICE, SIGNAL_TIME
     global VOLUME_SPIKE, PRICE_SPIKE_TEMP, YESTERDAY_HIGH, OPTIMAL_ENTRY_TIME, OPTIMAL_EXIT_TIME
-    global PREVIOUS_DAY_CLOSE
-    global results, inputs
+    global PREVIOUS_DAY_CLOSE, RESULT_INDEXER
+    global ACCOUNT_SIZE
+    global results, inputs, signal
     global input_indexer
 
     # Initialize variables
@@ -286,7 +289,30 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     ACCOUNT_SIZE = 100000  # Add initial account size
     SIGNALS = 0
     BUYS = 0
+    RESULT_INDEXER = 0
+
+    # Convert timestamps to ET datetime
+    eastern = pytz.timezone('US/Eastern')
+    start_of_backtest = datetime.fromtimestamp(int(start_time) / 1000).astimezone(eastern)
+    end_of_backtest = datetime.fromtimestamp(int(end_time) / 1000).astimezone(eastern)
+
+    # Get NYSE calendar schedule
+    nyse = mcal.get_calendar('NYSE')
+    open_close_schedule = pd.DataFrame(nyse.schedule(start_date=start_of_backtest, end_date=end_of_backtest))
     
+    open_close_schedule.index.names = ['Date']
+    open_close_schedule.reset_index(inplace=True)
+
+    # Convert market times to ET
+    open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.tz_convert('US/Eastern')
+    open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.tz_convert('US/Eastern')
+
+    # Extract date and time components
+    open_close_schedule['Date'] = open_close_schedule['market_open'].dt.date
+    open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
+    open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
+
+    print(open_close_schedule)
 
     strategy_note = ""  # Add this if needed
     
@@ -302,7 +328,8 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    all_tickers = ['JBLU']
+    all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
+
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
 
@@ -479,7 +506,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
             stockies[ticker]['Close_Condition'] = 'False'
 
-                #Checks that all criteria was checked (X days ago) and that we are just waiting for buy signal (price crosses above VWAP)
+            #Checks that all criteria was checked (X days ago) and that we are just waiting for buy signal (price crosses above VWAP)
             stockies[ticker]['Ok_To_Buy'] = 'False'
             #Creates the Buy and Sell Signal Column for iteration
             stockies[ticker]['Buy_Sell_Signal'] = 'None'
@@ -509,8 +536,8 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
             POSITION = 'Neutral'
 
-            # Save stockies to see its structure
-            # stockies[ticker].to_excel('./test/stockies_structure.xlsx', index=True, header=True)
+            # Save stockies to see its structure 
+            stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
 
             # test = f'./test/backtest.xlsx'
             # stockies[ticker].to_excel(test, index=False, header=True)
@@ -546,12 +573,11 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     stockies[ticker].at[index,'Yesterday High'] = YESTERDAY_HIGH
                     stockies[ticker].at[index,'Target_Entry_Price'] = TARGET_ENTRY_PRICE
 
-            # test = f'./test/backtest.xlsx'
-            # stockies[ticker].to_excel(test, index=False, header=True)
+            stockies[ticker].to_csv('backtest_results/debugging/stockies.csv', index=False, header=True)
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]
-            # stonks.to_excel(f'./test/BACKTEST_STONKS_{ticker}_{input_indexer}.xlsx', index=True, header=True)
+            stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}_{input_indexer}.csv', index=True, header=True)
 
                 
             #Check that pre-market high wasn't higher than yesterday's high bar (in backtest)
@@ -672,7 +698,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         # tick_list = tickers
         # Write each dataframe to a different worksheet.
         # results = pd.merge(results,tick_list[['Ticker','Market Capitalization','Sector','Shares Float']],on = 'Ticker', how = 'left')
-        results.to_excel(f'backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.xlsx', index=False, header=True)
+        results.to_csv(f'backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.csv', index=False, header=True)
         input_indexer += 1
 
     ################################################### CLEAN OUTPUTS ####################################################
@@ -691,7 +717,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # plot = px.line(results, x = results.index.values, y = 'Account Size', title = 'Equity Curve')
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
-    inputs.to_excel(f'backtest_results/run_{run}_on_{current_date}.xlsx', index=True, header=True)
+    inputs.to_csv(f'backtest_results/run_{run}_on_{current_date}.csv', index=True, header=True)
     print(datetime.now() - start_clock)
 
     # Final summary
