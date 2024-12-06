@@ -6,7 +6,8 @@ from .backtest_functions import (
     last_trading_day,
     buy_sell_signal,
     calculate_sell_results,
-    buy_sell
+    buy_sell,
+    run_vwap_spike_screener_backtest    
 )
 
 # Importing specific functions from the schwab_functions module
@@ -39,11 +40,6 @@ from .screener_functions import (
 from .execute_strategy import (
     ExecuteStrategy
 )
-
-from .run_backtest import (
-    run_vwap_spike_screener_backtest    
-)
-
 from .analyze_trades import (
     get_todays_trades,
     extract_trade_info
@@ -58,6 +54,7 @@ __all__ = [
     'buy_sell_signal',
     'calculate_sell_results',
     'buy_sell',
+    'run_vwap_spike_screener_backtest',
     
     # Schwab API functions
     'auto_authenticate',
@@ -83,9 +80,7 @@ __all__ = [
     
     # Strategy execution
     'ExecuteStrategy',
-
-    #run_backtest
-    'run_vwap_spike_screener_backtest',
+    
 
     # analyze_trades
     'get_todays_trades',
