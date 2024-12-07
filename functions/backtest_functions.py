@@ -331,7 +331,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    # all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
+    # all_tickers = ['DQ']
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration

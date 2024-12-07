@@ -274,7 +274,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                 stockies[ticker]['Close_Condition'] = 'False'
 
-                stockies[ticker].to_csv(f'backtest_results/debugging/stockies_screener_{ticker}.csv', index=False, header=True)
+                # stockies[ticker].to_csv(f'backtest_results/debugging/stockies_screener_{ticker}.csv', index=False, header=True)
                 
                 TEMP_SIGNAL_DAY = stockies[ticker]['Date'][0] - timedelta(days=10)
                 TARGET_ENTRY_PRICE = 0 
