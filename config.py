@@ -121,18 +121,18 @@ open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.tz_
 # Extract date and time components
 open_close_schedule['Date'] = open_close_schedule['market_open'].dt.date
 open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
-open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
+open_close_schedule['market_close'] = (open_close_schedule['market_close'] - timedelta(minutes=30)).dt.time
 
 
-nyse = mcal.get_calendar('NYSE')
-open_close_schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en))
-open_close_schedule.index.names = ['Date']
-open_close_schedule.reset_index(inplace=True)
-open_close_schedule['Date'] = open_close_schedule['Date'].dt.date
-open_close_schedule['market_open'] = open_close_schedule['market_open'] - timedelta(hours=4)
-open_close_schedule['market_close'] = open_close_schedule['market_close'] - timedelta(hours=4, minutes=time_interval)
-open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
-open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
+# nyse = mcal.get_calendar('NYSE')
+# open_close_schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en))
+# open_close_schedule.index.names = ['Date']
+# open_close_schedule.reset_index(inplace=True)
+# open_close_schedule['Date'] = open_close_schedule['Date'].dt.date
+# open_close_schedule['market_open'] = open_close_schedule['market_open'] - timedelta(hours=4)
+# open_close_schedule['market_close'] = open_close_schedule['market_close'] - timedelta(hours=4, minutes=time_interval)
+# open_close_schedule['market_open'] = open_close_schedule['market_open'].dt.time
+# open_close_schedule['market_close'] = open_close_schedule['market_close'].dt.time
 
 nyse_days = nyse.valid_days(start_date=st, end_date=en)
 valid_trading_days = pd.Series(nyse_days).dt.date

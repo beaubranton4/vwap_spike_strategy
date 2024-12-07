@@ -123,8 +123,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
     #FOR TESTING
-    # all_tickers = ['PLUG']
-
+    # all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
+    # print(open_close_schedule)
     # Initialize results DataFrame
     stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike',
                                           'Previous Day Close','Signal Time', 'Stop Price', 'Sell Price'])
@@ -213,7 +213,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                 stahks['After Hours'] = (stahks['Time'] > stahks['market_close']) | (stahks['Time'] < stahks['market_open'])
 
-                cond_2 = (stahks['After Hours'] == True)
+                cond_2 = (stahks['Time'] < stahks['market_open'])
                 stahks['Pre-Market High'] = stahks[cond_2].groupby('Date', as_index=True)['High'].transform('max')
                 
                 stahks = stahks.ffill(axis=0)
@@ -274,6 +274,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                 stockies[ticker]['Close_Condition'] = 'False'
 
+                stockies[ticker].to_csv(f'backtest_results/debugging/stockies_screener_{ticker}.csv', index=False, header=True)
+                
                 TEMP_SIGNAL_DAY = stockies[ticker]['Date'][0] - timedelta(days=10)
                 TARGET_ENTRY_PRICE = 0 
                 TARGET_ENTRY_PRICE_2 = 0

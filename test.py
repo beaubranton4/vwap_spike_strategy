@@ -71,7 +71,7 @@ def main():
 
     
     client = get_authenticated_client()
-    # get_todays_trades(client)
+    get_todays_trades(client)
     account_balance = get_account_balance(client)
     print(f"Account balance: {account_balance}")
 

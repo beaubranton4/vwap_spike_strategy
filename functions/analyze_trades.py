@@ -126,14 +126,36 @@ def get_todays_trades(client):
         # Create results DataFrame
         results_df = pd.DataFrame(results)
         
-        # Calculate totals
-        total_short_value = results_df['Total $ Shorted'].sum()
-        total_cover_value = results_df['Total $ Covered'].sum()
+        # Handle existing file and calculate grand totals
+        results_dir = Path('logs/performance')
+        results_dir.mkdir(parents=True, exist_ok=True)
+        summary_file = results_dir / 'performance_summary.csv'
+        
+        # Combine with existing data if file exists
+        if summary_file.exists():
+            existing_df = pd.read_csv(summary_file)
+            # Remove the totals row if it exists
+            existing_df = existing_df[existing_df['Date'] != 'TOTALS']
+            # Remove today's entries if they exist
+            existing_df = existing_df[existing_df['Date'] != today.strftime('%Y-%m-%d')]
+            
+            # Convert currency strings back to numbers for calculations
+            for col in ['Total $ Shorted', 'Total $ Covered', 'P&L']:
+                existing_df[col] = existing_df[col].str.replace('$', '').str.replace(',', '').astype(float)
+            
+            # Combine existing and new data
+            all_results = pd.concat([existing_df, results_df], ignore_index=True)
+        else:
+            all_results = results_df
+        
+        # Calculate grand totals using all data
+        total_short_value = all_results['Total $ Shorted'].sum()
+        total_cover_value = all_results['Total $ Covered'].sum()
         total_pnl = total_short_value - total_cover_value
         
-        # Calculate win rate (do this before formatting numbers as strings)
-        total_trades = len(results_df)
-        winning_trades = len(results_df[results_df['P&L'] > 0])  # Compare numbers, not strings
+        # Calculate overall win rate
+        total_trades = len(all_results)
+        winning_trades = len(all_results[all_results['P&L'] > 0])
         win_rate = (winning_trades/total_trades*100) if total_trades > 0 else 0
         
         # Calculate total return percentage
@@ -151,31 +173,16 @@ def get_todays_trades(client):
             'Return %': f'{total_return_pct:.2f}%'
         }])
         
-        # Combine DataFrames before formatting
-        final_df = pd.concat([results_df, totals_row], ignore_index=True)
+        # Combine all results with totals row
+        final_df = pd.concat([all_results, totals_row], ignore_index=True)
         
-        # Now format all numeric columns as currency strings
+        # Format numeric columns as currency strings
         for col in ['Total $ Shorted', 'Total $ Covered', 'P&L']:
             final_df[col] = final_df[col].apply(lambda x: f"${x:,.2f}" if pd.notnull(x) else x)
         
-        # Format average prices (only for non-null values)
+        # Format average prices
         for col in ['Avg Short Price', 'Avg Cover Price']:
             final_df[col] = final_df[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else x)
-        
-        # Save as short_performance_summary.csv
-        results_dir = Path('logs/performance')
-        results_dir.mkdir(parents=True, exist_ok=True)
-        summary_file = results_dir / 'performance_summary.csv'
-        
-        # Handle existing file
-        if summary_file.exists():
-            existing_df = pd.read_csv(summary_file)
-            # Remove the totals row if it exists
-            existing_df = existing_df[existing_df['Date'] != 'TOTALS']
-            # Remove today's entries if they exist
-            existing_df = existing_df[existing_df['Date'] != today.strftime('%Y-%m-%d')]
-            # Append new results
-            final_df = pd.concat([existing_df, final_df], ignore_index=True)
         
         # Save the updated summary
         final_df.to_csv(summary_file, index=False)

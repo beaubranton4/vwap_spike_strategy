@@ -331,7 +331,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
+    # all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
@@ -446,7 +446,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
             stahks['After Hours'] = (stahks['Time'] > stahks['market_close']) | (stahks['Time'] < stahks['market_open'])
 
-            cond_2 = (stahks['After Hours'] == True)
+            cond_2 = (stahks['Time'] < stahks['market_open'])
             stahks['Pre-Market High'] = stahks[cond_2].groupby('Date', as_index=True)['High'].transform('max')
             
             stahks = stahks.ffill(axis=0)

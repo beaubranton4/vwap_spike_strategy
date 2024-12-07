@@ -1,21 +1,6 @@
-    --JBLU, AES, APLD WORKED
-    -- PPTA, and APP no buy on 12-05
-    -- GILT, no signal on 12-04 and no buy on 12-05
+-- Compare backtest for 12/6 against actual 12/6 trades (rerun screener too)
+-- Run backtest in total.
 
-    -- Fixing APLD:IF WE GET SIGNAL ON BACK TO BACK DAYS, THE BACKTEST WILL MISS THE SELL SIGNAL, b/c the ok_to_buy day will change to the next day and will not mark the close of the day as ok_to_buy.
-
-    
-    --Fix backtest function. Is it correctly grabbing everything? is it the screener or the backtest that is the issue?
-        -- there was definitely an issue with the open and close times, but those seem to be resolved? double check
-        -- Next need to check the examples of the 2 stocks it does not grab, that we actually made a trade on.
-            --
-    
-    -- it seems that my backtest was assuming that the market opens at 10:30, which was used to calculate the premarket high. So if the price crossed yesterday's high between 9:30 and 10:30, it was not being counted. Also theoretically impossible to execute on that.
-
-    But maybe that could be a sign too.
-
-
-    
     ------------------------------------------------------------------------------------------------------
     - Logging for end of day close. why didn't PYPL close the short?
     -----------------------------------------------------------------------------------------------------
