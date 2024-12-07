@@ -581,7 +581,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     stockies[ticker].at[index,'Yesterday High'] = YESTERDAY_HIGH
                     stockies[ticker].at[index,'Target_Entry_Price'] = TARGET_ENTRY_PRICE
 
-            stockies[ticker].to_csv(f'backtest_results/debugging/stockies_{ticker}.csv', index=False, header=True)
+            # stockies[ticker].to_csv(f'backtest_results/debugging/stockies_{ticker}.csv', index=False, header=True)
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]

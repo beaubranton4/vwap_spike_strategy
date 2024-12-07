@@ -71,13 +71,13 @@ def main():
 
     
     client = get_authenticated_client()
-    get_todays_trades(client)
+    # get_todays_trades(client)
     account_balance = get_account_balance(client)
     print(f"Account balance: {account_balance}")
 
 
-    end_backtest_date = datetime.now() - timedelta(days=1)
-    start_backtest_date = end_backtest_date - timedelta(days=30)
+    end_backtest_date = datetime.now() 
+    start_backtest_date = end_backtest_date - timedelta(days=365)
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
     # print(combinations[sell_time_threshold_index])
