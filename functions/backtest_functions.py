@@ -520,7 +520,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             #Create temporary signal day variable that signaled whether or not the price_to_buy_signal was triggered during that day
             TEMP_SIGNAL_DAY = stockies[ticker]['Date'][0] - timedelta(days=1)
             #Create temporary ok to buy day variable that will trigger if the close condition for the day was satisfied (which only triggers if grab_price_signal is triggered)
-            OK_TO_BUY_DAY = stockies[ticker]['Date'][0] - timedelta(days=2)
+            OK_TO_BUY_DAY = stockies[ticker]['Date'][0] - timedelta(days=365)
             #Initially set not to trigger and gets set on price_buy_signal
             TARGET_ENTRY_PRICE = 0.0 
             ENTRY_PRICE = 0.0 
@@ -559,6 +559,9 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     PRICE_SPIKE = (row['High']-row['Day_Open_Low'])/row['Day_Open_Low']
                     YESTERDAY_HIGH = row['high_of_day']
 
+                # Store previous OK_TO_BUY_DAY before potentially updating it
+                previous_ok_to_buy = OK_TO_BUY_DAY
+
                 if (row['Close']<=TARGET_ENTRY_PRICE) & (row['Day_Close'] == True) & (row['Date'] == TEMP_SIGNAL_DAY):
                     # print(f"Setting Close_Condition: Close={row['Close']}, TARGET={TARGET_ENTRY_PRICE}, Date={row['Date']}")
                     stockies[ticker].at[index,'Close_Condition'] = 'True'
@@ -567,8 +570,9 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     PREVIOUS_DAY_CLOSE = row['Close']
                     logger.info(f"Signal found for {ticker} on {row['Date']}")
 
-                if (OK_TO_BUY_DAY == row['Date']):
-                    print(f"Setting Ok_To_Buy for date: {row['Date']}")
+                # Check both current and previous OK_TO_BUY_DAY (for edge case of back to back days with signal)
+                if (OK_TO_BUY_DAY == row['Date']) or (previous_ok_to_buy == row['Date']):
+                    # print(f"Setting Ok_To_Buy for date: {row['Date']}")
                     stockies[ticker].at[index,'Ok_To_Buy'] = 'True' 
                     stockies[ticker].at[index,'Previous_Day_Close'] = PREVIOUS_DAY_CLOSE
                     stockies[ticker].at[index,'Signal Time'] = SIGNAL_TIME
