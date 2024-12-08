@@ -23,6 +23,9 @@ logger = None  # Initialize global logger variable
 # Setup logging
 def setup_logging():
     """Setup logging with ET date-based log file that rotates at midnight ET"""
+    global logger  # Make sure we're modifying the global logger
+    
+    # Create or get logger
     logger = logging.getLogger(__name__)
     logger.handlers.clear()  # Clear existing handlers
     
@@ -65,44 +68,27 @@ def setup_logging():
                               + timedelta(days=1))
             return int(next_midnight_et.timestamp())
             
-        def getFilesToDelete(self):
-            """Override to handle ET-based file deletion"""
-            dirName, baseName = os.path.split(self.baseFilename)
-            fileNames = os.listdir(dirName)
-            result = []
-            for fileName in fileNames:
-                if fileName.endswith(".log"):
-                    result.append(os.path.join(dirName, fileName))
-            if len(result) > self.backupCount:
-                result.sort()
-                result = result[:-self.backupCount]
-            return result
-            
         def doRollover(self):
             """Override to use ET date for new file name"""
             if self.stream:
                 self.stream.close()
                 self.stream = None
-                
+            
+            # Get current ET time for new file name
             current_et = datetime.now(self.et_tz)
             new_file = f"{log_dir}/{current_et.strftime('%Y%m%d')}.log"
             
-            # Rotate the file if needed
-            if os.path.exists(self.baseFilename):
-                try:
-                    os.rename(self.baseFilename, new_file)
-                except OSError:
-                    # Handle any file operation errors
-                    pass
-                    
+            # Create new file for current day
             self.baseFilename = new_file
             if not self.delay:
                 self.stream = self._open()
-                
+            
             # Set next rollover time
             self.rolloverAt = self.computeRollover(time.time())
+            
+            logger.info(f"Log file rolled over to: {new_file}")
     
-    # Use the custom handler
+    # Create and configure the file handler
     file_handler = ETTimedRotatingFileHandler(
         filename=log_file,
         when='midnight',
@@ -123,6 +109,11 @@ def setup_logging():
     console_handler.setFormatter(formatter)
     console_handler.setLevel(logging.INFO)
     logger.addHandler(console_handler)
+    
+    # Force immediate rollover if needed
+    current_et = datetime.now(et_tz)
+    if os.path.exists(log_file) and current_et.strftime("%Y%m%d") != current_et_date:
+        file_handler.doRollover()
     
     logger.info(f"Logging initialized for ET date: {current_et_date}")
     
@@ -618,10 +609,8 @@ def main():
             if current_time.date() != last_date_checked:
                 logger.info(f"New day detected: {current_time.date()}")
                 
-                # Force log rotation check
-                for handler in logger.handlers:
-                    if isinstance(handler, TimedRotatingFileHandler):
-                        handler.doRollover()
+                # Reinitialize logger for new day
+                logger = setup_logging()
                 
                 refresh_market_schedule()
                 
