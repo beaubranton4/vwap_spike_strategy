@@ -83,8 +83,8 @@ def setup_logging():
             if not self.delay:
                 self.stream = self._open()
             
-            # Set next rollover time
-            self.rolloverAt = self.computeRollover(time.time())
+            # Set next rollover time using time_lib instead of time
+            self.rolloverAt = self.computeRollover(time_lib.time())
             
             logger.info(f"Log file rolled over to: {new_file}")
     

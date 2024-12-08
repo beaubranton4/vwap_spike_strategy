@@ -636,6 +636,8 @@ def get_all_positions(client):
 
 def check_position_match(client, target_symbol, target_quantity, short):
     """Optimized version using cached positions with detailed logging"""
+    global logger
+    
     try:
         target_symbol = target_symbol.upper()
         target_quantity = float(target_quantity)
@@ -667,7 +669,6 @@ def check_position_match(client, target_symbol, target_quantity, short):
         logger.error(f"Error in check_position_match: {str(e)}")
         return False
     
-
 def close_matched_positions(client: Client, df: pd.DataFrame) -> None:
     """
     Close short positions that match symbols in the premarket screener results.
@@ -676,7 +677,19 @@ def close_matched_positions(client: Client, df: pd.DataFrame) -> None:
         client: Authenticated Schwab client
         df: DataFrame containing at least 'Ticker' and 'Shares' columns
     """
+    # Create EOD positions log file with today's date
+    today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y%m%d')
+    log_dir = 'logs/close_eod_positions'
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Set up file handler for EOD positions log with ET timestamps
+    file_handler = logging.FileHandler(f'{log_dir}/{today}.log')
+    formatter = logging.Formatter('%(asctime)s ET - %(levelname)s - %(message)s')
+    formatter.converter = lambda *args: datetime.now(pytz.timezone('US/Eastern')).timetuple()
+    file_handler.setFormatter(formatter)
     logger = logging.getLogger(__name__)
+    logger.addHandler(file_handler)
+    
     logger.info(f"Checking end of day positions to close...")
     
     for idx, row in df.iterrows():
@@ -709,6 +722,10 @@ def close_matched_positions(client: Client, df: pd.DataFrame) -> None:
             logger.error(f"Error processing {symbol}: {str(e)}")
             logger.error(traceback.format_exc())
             continue
+    
+    # Remove the file handler after we're done
+    logger.removeHandler(file_handler)
+    file_handler.close()
 
 #SCHWAB API DOCUMENTATION FOR ORDERS
 # https://developer.schwab.com/docs/services/5b3323445b3323445b332344/operations/5b3323445b3323445b332345

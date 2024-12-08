@@ -74,6 +74,8 @@ def main():
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
     print(f"Account balance: {account_balance}")
+    df = pd.read_csv(f'screener/premarket_screener_signals/2024-12-05.csv')
+    close_matched_positions(client, df)
 
 
     end_backtest_date = datetime.now() 

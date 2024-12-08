@@ -48,9 +48,20 @@ def setup_logger():
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     
-    # Create formatter
-    formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s', 
-                                datefmt='%Y-%m-%d %H:%M:%S')
+    # Create formatter with ET timezone
+    class ETFormatter(logging.Formatter):
+        def converter(self, timestamp):
+            dt = datetime.fromtimestamp(timestamp)
+            et_tz = pytz.timezone('US/Eastern')
+            return dt.astimezone(et_tz).timetuple()
+            
+        def formatTime(self, record, datefmt=None):
+            dt = self.converter(record.created)
+            if datefmt:
+                return datetime(*dt[:6]).strftime(datefmt)
+            return datetime(*dt[:6]).strftime('%Y-%m-%d %H:%M:%S ET')
+            
+    formatter = ETFormatter('%(asctime)s | %(levelname)s | %(message)s')
     
     # Add formatter to handlers
     file_handler.setFormatter(formatter)
