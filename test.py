@@ -64,8 +64,49 @@ def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
     
     return df
 
-
-
+def parse_orders(orders):
+    parsed_orders = []
+    
+    for order in orders:
+        # Get the symbol from the first leg
+        symbol = order['orderLegCollection'][0]['instrument']['symbol']
+        
+        # Parse timestamps
+        entered_time = datetime.strptime(order['enteredTime'], '%Y-%m-%dT%H:%M:%S%z')
+        close_time = datetime.strptime(order.get('closeTime', order['enteredTime']), '%Y-%m-%dT%H:%M:%S%z')
+        
+        # Get execution price if available
+        exec_price = None
+        if 'orderActivityCollection' in order:
+            for activity in order['orderActivityCollection']:
+                if activity['activityType'] == 'EXECUTION' and activity['executionType'] == 'FILL':
+                    exec_price = activity['executionLegs'][0]['price']
+                    break
+        
+        parsed_order = {
+            'Symbol': symbol,
+            'OrderId': order['orderId'],
+            'Type': order['orderType'],
+            'Status': order['status'],
+            'Quantity': order['quantity'],
+            'Price': order.get('price', exec_price),
+            'Filled': order['filledQuantity'],
+            'Entered': entered_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'Closed': close_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'Duration': order['duration'],
+            'Instruction': order['orderLegCollection'][0]['instruction']
+        }
+        parsed_orders.append(parsed_order)
+        
+    # Create DataFrame
+    df = pd.DataFrame(parsed_orders)
+    
+    # Reorder columns
+    cols = ['Symbol', 'OrderId', 'Type', 'Status', 'Instruction', 'Quantity', 
+            'Filled', 'Price', 'Duration', 'Entered', 'Closed']
+    df = df[cols]
+    
+    return df
 
 def main():
 
@@ -73,15 +114,60 @@ def main():
     client = get_authenticated_client()
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
-    print(f"Account balance: {account_balance}")
-    df = pd.read_csv(f'screener/premarket_screener_signals/2024-12-05.csv')
-    close_matched_positions(client, df)
+    linked_accounts_response = client.account_linked()
+    if linked_accounts_response.status_code != 200:
+        logger.error(f"Failed to place order for {symbol}")
+        
+    # account_hash = linked_accounts_response.json()[0].get('hashValue')
+    # print(account_hash)
+    # # Retrieve order details for a specific order ID
+    # order_id = 1002403722091
+    # # account_hash = 'your_account_hash_here'  # Replace with the actual account hash
+    # order_response = client.order_details(account_hash, order_id)
+    
+    # if order_response.status_code == 200:
+    #     order_details = order_response.json()
+    #     df = parse_orders(order_details)
+    # #         # Export DataFrame to CSV
+    # #         output_file_path = 'orders.csv'
+    # #         df.to_csv(output_file_path, index=False)
+    # #         logger.info(f"Exported orders to {output_file_path}")
+    #     print(df)
+    #     # print("Order Details:", order_details)
+    # else:
+    #     logger.error(f"Error retrieving order details: {order_response.status_code}")
 
 
-    end_backtest_date = datetime.now() 
-    start_backtest_date = end_backtest_date - timedelta(days=365)
-    start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
-    end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
+    # Get orders from last 24 hours
+    from_time = datetime.now() - timedelta(days=3)
+    to_time = datetime.now()
+    
+    try:
+        # Query orders
+        response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
+        
+        if response.status_code == 200:
+            orders = response.json()
+            df = parse_orders(orders)
+            # Export DataFrame to CSV
+            output_file_path = 'orders.csv'
+            df.to_csv(output_file_path, index=False)
+            logger.info(f"Exported orders to {output_file_path}")
+            print(df)
+        else:
+            logger.error(f"Error getting orders: {response.status_code}")
+            
+    except Exception as e:
+        logger.error(f"Error querying orders: {str(e)}")
+    # print(f"Account balance: {account_balance}")
+    # df = pd.read_csv(f'screener/premarket_screener_signals/2024-12-05.csv')
+    # close_matched_positions(client, df)
+
+
+    # end_backtest_date = datetime.now() 
+    # start_backtest_date = end_backtest_date - timedelta(days=365)
+    # start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
+    # end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
     # print(combinations[sell_time_threshold_index])
     # print("Backtest Parameters:")
     # print("-" * 50)

@@ -462,7 +462,7 @@ def get_market_times(market_schedule, today):
         'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
-        'market_close': "15:59:40",
+        'market_close': "15:59:00",
         'trade_analysis': "18:00:00"
     }
     
@@ -475,7 +475,7 @@ def get_market_times(market_schedule, today):
             times.update({
                 'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
                 'market_open': market_open.strftime("%H:%M:%S"),
-                'market_close': (market_close - timedelta(seconds=20)).strftime("%H:%M:%S")
+                'market_close': (market_close - timedelta(minutes=1)).strftime("%H:%M:%S")
             })
     return times
 
@@ -586,15 +586,6 @@ def main():
     last_resource_log = time_lib.time()
     resource_log_interval = 300  # 5 minutes
     
-    # Check if today is a market date
-    if not is_market_date(market_schedule, today):
-        logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day")
-        while True:
-            if datetime.now().minute == 0:
-                logger.info("Bot is running - Waiting for next trading day")
-            time_lib.sleep(60)
-        return
-    
     # Schedule initial jobs
     market_times = get_market_times(market_schedule, today)
     schedule_daily_jobs(market_times)
@@ -613,6 +604,16 @@ def main():
                 logger = setup_logging()
                 
                 refresh_market_schedule()
+
+                # Check if today is a market date
+                if not is_market_date(market_schedule, current_time):
+                    logger.info(f"Today ({today.strftime('%Y-%m-%d')}) is not a trading day")
+                    while not is_market_date(market_schedule, current_time):
+                        current_time = datetime.now(et_tz)
+                        if current_time.minute == 0:
+                            logger.info("Bot is running - Waiting for next trading day")
+                        time_lib.sleep(60)
+                    logger.info("Today is now a trading day.")
                 
                 if is_market_date(market_schedule, current_time):
                     logger.info("Scheduling jobs for new trading day")
