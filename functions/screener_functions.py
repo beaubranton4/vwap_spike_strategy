@@ -444,11 +444,12 @@ def calculate_shares(client, df, allocation):
         
         # Calculate the two limits
         allocation_limit = cash_balance * allocation
-        equal_distribution = cash_balance / len(df)
+        equal_distribution = cash_balance / len(df) * 10/6 #Max 60% of stocks in screeners lead to buys
+        #If less than 16 ticker, then will use .1 allocation otherwise divide by # of ticker and assume 60% hit.
         
         # Take the smaller of the two limits
-        # position_size = min(allocation_limit, equal_distribution)
-        position_size = allocation_limit
+        position_size = min(allocation_limit, equal_distribution)
+        # position_size = allocation_limit
         
         # Calculate shares for each row
         df['Shares'] = (position_size / df['Target Entry']).apply(lambda x: int(x))
