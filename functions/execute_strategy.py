@@ -83,6 +83,9 @@ class ExecuteStrategyConfig:
     L1_FIELDS: str = "0,1"
     L2_FIELDS: str = "0,1,2,3"  # Level 2 fields
 
+class InsufficientFundsError(Exception):
+    pass
+
 class ExecuteStrategy:
     """
     A class to execute real-time trading strategies by streaming market data.
@@ -395,7 +398,7 @@ class ExecuteStrategy:
                         self.logger.warning(f"{current_time.strftime('%H:%M:%S')} ET | {symbol}: "
                                     f"❌ Insufficient funds for order: ${order_value:.2f} > ${cash_balance:.2f}")
                         self.logger.warning(f"{'='*50}\n")
-                        return
+                        raise InsufficientFundsError("Insufficient funds to continue trading")
                         
                 except Exception as e:
                     self.logger.error(f"Error checking cash balance: {str(e)}")
@@ -582,6 +585,10 @@ class ExecuteStrategy:
                     
                     sleep(ExecuteStrategyConfig.SLEEP_INTERVAL)
                     
+                except InsufficientFundsError as e:
+                    self.logger.warning("Stopping trading due to insufficient funds")
+                    self.is_running = False
+                    break
                 except Exception as e:
                     self.logger.error(f"Error in trading loop: {e}")
                     # Reconnection logic
