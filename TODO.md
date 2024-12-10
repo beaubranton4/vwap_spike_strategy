@@ -1,3 +1,5 @@
+-- Join peformance csv with screener to get info on what stocks performed well.
+
 -- Compare backtest for 12/6 against actual 12/6 trades (rerun screener too)
 -- Run backtest in total.
 
