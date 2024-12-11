@@ -307,6 +307,33 @@ def refresh_market_schedule():
         logger.error(f"Error refreshing market schedule: {str(e)}")
         logger.error(traceback.format_exc())
 
+def close_open_orders_at_buy_time_threshold():
+    """Close all open SELL_SHORT orders at buy time threshold"""
+    
+    global logger
+    
+    try:
+        logger.info("Starting to close all open shorts...")
+        
+        # Initialize client and get account hash
+        client = get_authenticated_client()
+        linked_accounts_response = client.account_linked()
+        account_hash = linked_accounts_response.json()[0].get('hashValue')
+        
+        # Set time range to last 24 hours
+        to_time = datetime.now()
+        from_time = to_time - timedelta(days=1)
+        
+        # Close all open SELL_SHORT orders
+        close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
+        
+        logger.info("Successfully closed open SELL_SHORT orders")
+        
+    except Exception as e:
+        logger.error(f"Failed to close open SELL_SHORT orders: {str(e)}")
+        logger.error(traceback.format_exc())
+
+
 def close_end_of_day_positions():
     """Close all positions at market close"""
 
@@ -462,6 +489,7 @@ def get_market_times(market_schedule, today):
         'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
+        'close_open_short_orders': "10:31:00",
         'market_close': "15:59:00",
         'trade_analysis': "18:00:00"
     }
@@ -486,6 +514,7 @@ def schedule_daily_jobs(times):
         (times['screener'], run_daily_screener),
         (times['premarket'], schedule_premarket_screener),
         (times['market_open'], run_trading_strategy),
+        (times['close_open_short_orders'], close_open_orders_at_buy_time_threshold),
         (times['market_close'], close_end_of_day_positions),
         (times['trade_analysis'], run_trade_analysis)
     ]

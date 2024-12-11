@@ -26,47 +26,52 @@ from functions.backtest_functions import run_vwap_spike_screener_backtest
 
 # Logging setup
 import logging
+
+# import symbol
 logger = logging.getLogger('main')
 
-def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
-    """Print borrow info for all tickers and add data to dataframe"""
-    print("\nBorrow Information:")
-    print("-" * 50)
+# def print_borrow_info(df: pd.DataFrame, client) -> pd.DataFrame:
+#     """Print borrow info for all tickers and add data to dataframe"""
+#     print("\nBorrow Information:")
+#     print("-" * 50)
     
-    # Initialize new columns
-    df['isHardToBorrow'] = None
-    df['isShortable'] = None 
-    df['htbRate'] = None
+#     # Initialize new columns
+#     df['isHardToBorrow'] = None
+#     df['isShortable'] = None 
+#     df['htbRate'] = None
     
-    for idx, symbol in enumerate(df['Ticker']):
-        try:
-            response = client.quote(symbol, 'all')
-            if response.status_code == 200:
-                ref_data = response.json()[symbol]['reference']
+#     for idx, symbol in enumerate(df['Ticker']):
+#         try:
+#             response = client.quote(symbol, 'all')
+#             if response.status_code == 200:
+#                 ref_data = response.json()[symbol]['reference']
                 
-                # Print info
-                print(f"{symbol:<6} | HTB: {ref_data['isHardToBorrow']}, "
-                      f"Shortable: {ref_data['isShortable']}, "
-                      f"HTB Rate: {ref_data['htbRate']}%")
+#                 # Print info
+#                 print(f"{symbol:<6} | HTB: {ref_data['isHardToBorrow']}, "
+#                       f"Shortable: {ref_data['isShortable']}, "
+#                       f"HTB Rate: {ref_data['htbRate']}%")
                 
-                # Add to dataframe
-                df.loc[idx, 'isHardToBorrow'] = ref_data['isHardToBorrow']
-                df.loc[idx, 'isShortable'] = ref_data['isShortable']
-                df.loc[idx, 'htbRate'] = ref_data['htbRate']
+#                 # Add to dataframe
+#                 df.loc[idx, 'isHardToBorrow'] = ref_data['isHardToBorrow']
+#                 df.loc[idx, 'isShortable'] = ref_data['isShortable']
+#                 df.loc[idx, 'htbRate'] = ref_data['htbRate']
                 
-            time_lib.sleep(0.1)  # Rate limiting
-        except Exception as e:
-            print(f"{symbol:<6} | Error: {str(e)}")
+#             time_lib.sleep(0.1)  # Rate limiting
+#         except Exception as e:
+#             print(f"{symbol:<6} | Error: {str(e)}")
     
-    # Save to Excel
-    df.to_excel('data/tickers_w_htb_data.xlsx', index=False)
-    print(f"\nData saved to data/tickers_w_htb_data.xlsx")
+#     # Save to Excel
+#     df.to_excel('data/tickers_w_htb_data.xlsx', index=False)
+#     print(f"\nData saved to data/tickers_w_htb_data.xlsx")
     
-    return df
-
-def parse_orders(orders):
+#     return df
+def close_all_open_orders(client, account_hash, from_time, to_time):
+    
     parsed_orders = []
-    
+    linked_accounts_response = client.account_linked()     
+    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
+    orders = response.json()
     for order in orders:
         # Get the symbol from the first leg
         symbol = order['orderLegCollection'][0]['instrument']['symbol']
@@ -84,29 +89,74 @@ def parse_orders(orders):
                     break
         
         parsed_order = {
-            'Symbol': symbol,
             'OrderId': order['orderId'],
-            'Type': order['orderType'],
             'Status': order['status'],
-            'Quantity': order['quantity'],
-            'Price': order.get('price', exec_price),
-            'Filled': order['filledQuantity'],
-            'Entered': entered_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'Closed': close_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'Duration': order['duration'],
-            'Instruction': order['orderLegCollection'][0]['instruction']
+            'Symbol': symbol
         }
         parsed_orders.append(parsed_order)
         
     # Create DataFrame
     df = pd.DataFrame(parsed_orders)
     
-    # Reorder columns
-    cols = ['Symbol', 'OrderId', 'Type', 'Status', 'Instruction', 'Quantity', 
-            'Filled', 'Price', 'Duration', 'Entered', 'Closed']
-    df = df[cols]
+    # Filter for only WORKING orders
+    df = df[df['Status'] == 'WORKING']
+    # Cancel each working order
+    for order_id in df['OrderId']:
+        cancel_response = client.order_cancel(account_hash, order_id)
+        if cancel_response.status_code != 200:
+            logger.error(f"Failed to cancel order {order_id} for {symbol}")
+        else:
+            logger.info(f"Successfully cancelled order {order_id} for {symbol}")
+    return 
+
+
+#Takes in json returned from client.account_orders_all() and converts to a dataframe
+
+# def parse_orders(orders):
+#     parsed_orders = []
     
-    return df
+#     for order in orders:
+#         # Get the symbol from the first leg
+#         symbol = order['orderLegCollection'][0]['instrument']['symbol']
+        
+#         # Parse timestamps
+#         entered_time = datetime.strptime(order['enteredTime'], '%Y-%m-%dT%H:%M:%S%z')
+#         close_time = datetime.strptime(order.get('closeTime', order['enteredTime']), '%Y-%m-%dT%H:%M:%S%z')
+        
+#         # Get execution price if available
+#         exec_price = None
+#         if 'orderActivityCollection' in order:
+#             for activity in order['orderActivityCollection']:
+#                 if activity['activityType'] == 'EXECUTION' and activity['executionType'] == 'FILL':
+#                     exec_price = activity['executionLegs'][0]['price']
+#                     break
+        
+#         parsed_order = {
+#             'Symbol': symbol,
+#             'OrderId': order['orderId'],
+#             'Type': order['orderType'],
+#             'Status': order['status'],
+#             'Quantity': order['quantity'],
+#             'Price': order.get('price', exec_price),
+#             'Filled': order['filledQuantity'],
+#             'Entered': entered_time.strftime('%Y-%m-%d %H:%M:%S'),
+#             'Closed': close_time.strftime('%Y-%m-%d %H:%M:%S'),
+#             'Duration': order['duration'],
+#             'Instruction': order['orderLegCollection'][0]['instruction']
+#         }
+#         parsed_orders.append(parsed_order)
+        
+#     # Create DataFrame
+#     df = pd.DataFrame(parsed_orders)
+    
+#     # Reorder columns
+#     cols = ['Symbol', 'OrderId', 'Type', 'Status', 'Instruction', 'Quantity', 
+#             'Filled', 'Price', 'Duration', 'Entered', 'Closed']
+#     df = df[cols]
+#     # Filter for only WORKING orders
+#     df = df[df['Status'] == 'WORKING']
+    
+#     return df
 
 def main():
 
@@ -114,11 +164,15 @@ def main():
     client = get_authenticated_client()
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
+
+
     linked_accounts_response = client.account_linked()
-    if linked_accounts_response.status_code != 200:
-        logger.error(f"Failed to place order for {symbol}")
+    # if linked_accounts_response.status_code != 200:
+    #     logger.error(f"Failed to place order for {symbol}")
         
-    # account_hash = linked_accounts_response.json()[0].get('hashValue')
+    account_hash = linked_accounts_response.json()[0].get('hashValue')
+
+
     # print(account_hash)
     # # Retrieve order details for a specific order ID
     # order_id = 1002403722091
@@ -141,24 +195,28 @@ def main():
     # Get orders from last 24 hours
     from_time = datetime.now() - timedelta(days=3)
     to_time = datetime.now()
+
+    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
     
-    try:
-        # Query orders
-        response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
+    # try:
+    #     # Query orders
+    #     response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
         
-        if response.status_code == 200:
-            orders = response.json()
-            df = parse_orders(orders)
-            # Export DataFrame to CSV
-            output_file_path = 'orders.csv'
-            df.to_csv(output_file_path, index=False)
-            logger.info(f"Exported orders to {output_file_path}")
-            print(df)
-        else:
-            logger.error(f"Error getting orders: {response.status_code}")
+    #     if response.status_code == 200:
+    #         orders = response.json()
+    #         df = parse_orders(orders)
+    #         # Export DataFrame to CSV
+    #         output_file_path = 'orders.csv'
+    #         df.to_csv(output_file_path, index=False)
+    #         logger.info(f"Exported orders to {output_file_path}")
+    #         print(df)
+    #     else:
+    #         logger.error(f"Error getting orders: {response.status_code}")
             
-    except Exception as e:
-        logger.error(f"Error querying orders: {str(e)}")
+    # except Exception as e:
+    #     logger.error(f"Error querying orders: {str(e)}")
+
+
     # print(f"Account balance: {account_balance}")
     # df = pd.read_csv(f'screener/premarket_screener_signals/2024-12-05.csv')
     # close_matched_positions(client, df)
