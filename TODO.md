@@ -1,3 +1,4 @@
+-- run backtest for other combinations now that strategy has been tuned
 -- switch back to using VM from management account or just delete the VM
 -- Join peformance csv with screener to get info on what stocks performed well.
 -- Add cumulative performance to screener
