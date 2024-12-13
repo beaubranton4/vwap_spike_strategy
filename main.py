@@ -491,7 +491,7 @@ def get_market_times(market_schedule, today):
         'market_open': "09:30:00",
         'close_open_short_orders': "10:31:00",
         'market_close': "15:59:00",
-        'trade_analysis': "18:00:00"
+        'trade_analysis': "16:30:00"
     }
     
     if not market_schedule.empty:
