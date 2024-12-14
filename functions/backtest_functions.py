@@ -247,7 +247,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                            need_previous_close, rolling_lookback, 
                            price_spike_thresh_index, time_sig_thresh_index, buy_time_threshold_index,
                            vol_spike_thresh_index, sell_time_threshold_index,
-                           stop_index, target_index):
+                           stop_index, target_index, strategy_note_input):
     """
     Run the VWAP spike strategy screener to identify trading opportunities
     
@@ -289,10 +289,6 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
     # Initialize variables
     input_indexer = 0  # Add this line
-    ACCOUNT_SIZE = 100000  # Add initial account size
-    SIGNALS = 0
-    BUYS = 0
-    RESULT_INDEXER = 0
 
     # Convert timestamps to ET datetime
     eastern = pytz.timezone('US/Eastern')
@@ -317,7 +313,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     
     # print(open_close_schedule)
 
-    strategy_note = ""  # Add this if needed
+    strategy_note = strategy_note_input  # Add this if needed
     
     logger.info(f"Starting VWAP spike screener backtest with {len(ticker_list)} tickers")
     
@@ -335,27 +331,6 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
-
-    results = pd.DataFrame(columns=['Ticker',
-                                    'Date',
-                                    'Volume Spike',
-                                    'Price Spike',
-                                    'Previous Day Close',
-                                    'Signal Time',
-                                    'Target Entry',
-                                    'Entry Time',
-                                    'Exit Time',
-                                    'Account Size',
-                                    'Bet Size',
-                                    'Win/Loss', 
-                                    'Profit',
-                                    'Profit %',
-                                    'Entry',
-                                    'Exit',
-                                    'Type',
-                                    'Volume',
-                                    'Premarket Volume',
-                                    'Premarket Change'])
     
     inputs = pd.DataFrame(columns=['Account Size',
                                'Bet_Size',
@@ -472,6 +447,32 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # COMBO_INDEXER = 0
     
     for strategy in combinations:
+
+        ACCOUNT_SIZE = 100000  # Add initial account size
+        SIGNALS = 0
+        BUYS = 0
+        RESULT_INDEXER = 0
+
+        results = pd.DataFrame(columns=['Ticker',
+                                    'Date',
+                                    'Volume Spike',
+                                    'Price Spike',
+                                    'Previous Day Close',
+                                    'Signal Time',
+                                    'Target Entry',
+                                    'Entry Time',
+                                    'Exit Time',
+                                    'Account Size',
+                                    'Bet Size',
+                                    'Win/Loss', 
+                                    'Profit',
+                                    'Profit %',
+                                    'Entry',
+                                    'Exit',
+                                    'Type',
+                                    'Volume',
+                                    'Premarket Volume',
+                                    'Premarket Change'])
         
         print(strategy,(datetime.now() - start_clock))
         chunk_tickers = list(stockies.keys())
@@ -709,7 +710,8 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         # tick_list = tickers
         # Write each dataframe to a different worksheet.
         # results = pd.merge(results,tick_list[['Ticker','Market Capitalization','Sector','Shares Float']],on = 'Ticker', how = 'left')
-        results.to_csv(f'backtest_results/detailed_results/run_{run}_strategy_{input_indexer}.csv', index=False, header=True)
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        results.to_csv(f'backtest_results/detailed_results/{strategy_note_input}_backtest_strategy_{input_indexer}_on_{current_date}.csv', index=False, header=True)
         input_indexer += 1
 
     ################################################### CLEAN OUTPUTS ####################################################
@@ -728,7 +730,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # plot = px.line(results, x = results.index.values, y = 'Account Size', title = 'Equity Curve')
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
-    inputs.to_csv(f'backtest_results/run_{run}_on_{current_date}.csv', index=True, header=True)
+    inputs.to_csv(f'backtest_results/{strategy_note_input}_backtest_summary_{current_date}.csv', index=True, header=True)
     print(datetime.now() - start_clock)
 
     # Final summary
