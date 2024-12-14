@@ -65,49 +65,6 @@ logger = logging.getLogger('main')
 #     print(f"\nData saved to data/tickers_w_htb_data.xlsx")
     
 #     return df
-def close_all_open_orders(client, account_hash, from_time, to_time):
-    
-    parsed_orders = []
-    linked_accounts_response = client.account_linked()     
-    account_hash = linked_accounts_response.json()[0].get('hashValue')
-    response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
-    orders = response.json()
-    for order in orders:
-        # Get the symbol from the first leg
-        symbol = order['orderLegCollection'][0]['instrument']['symbol']
-        
-        # Parse timestamps
-        entered_time = datetime.strptime(order['enteredTime'], '%Y-%m-%dT%H:%M:%S%z')
-        close_time = datetime.strptime(order.get('closeTime', order['enteredTime']), '%Y-%m-%dT%H:%M:%S%z')
-        
-        # Get execution price if available
-        exec_price = None
-        if 'orderActivityCollection' in order:
-            for activity in order['orderActivityCollection']:
-                if activity['activityType'] == 'EXECUTION' and activity['executionType'] == 'FILL':
-                    exec_price = activity['executionLegs'][0]['price']
-                    break
-        
-        parsed_order = {
-            'OrderId': order['orderId'],
-            'Status': order['status'],
-            'Symbol': symbol
-        }
-        parsed_orders.append(parsed_order)
-        
-    # Create DataFrame
-    df = pd.DataFrame(parsed_orders)
-    
-    # Filter for only WORKING orders
-    df = df[df['Status'] == 'WORKING']
-    # Cancel each working order
-    for order_id in df['OrderId']:
-        cancel_response = client.order_cancel(account_hash, order_id)
-        if cancel_response.status_code != 200:
-            logger.error(f"Failed to cancel order {order_id} for {symbol}")
-        else:
-            logger.info(f"Successfully cancelled order {order_id} for {symbol}")
-    return 
 
 
 #Takes in json returned from client.account_orders_all() and converts to a dataframe
@@ -164,13 +121,23 @@ def main():
     client = get_authenticated_client()
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
+    print(account_balance)
 
-
+    # Initialize client and get account hash
     linked_accounts_response = client.account_linked()
+    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    
+    # Set time range to last 24 hours
+    to_time = datetime.now()
+    from_time = to_time - timedelta(days=1)
+    
+    # Close all open SELL_SHORT orders
+    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
+    
     # if linked_accounts_response.status_code != 200:
     #     logger.error(f"Failed to place order for {symbol}")
         
-    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    # account_hash = linked_accounts_response.json()[0].get('hashValue')
 
 
     # print(account_hash)
@@ -193,10 +160,10 @@ def main():
 
 
     # Get orders from last 24 hours
-    from_time = datetime.now() - timedelta(days=3)
-    to_time = datetime.now()
+    # from_time = datetime.now() - timedelta(days=3)
+    # to_time = datetime.now()
 
-    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
+    # close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
     
     # try:
     #     # Query orders

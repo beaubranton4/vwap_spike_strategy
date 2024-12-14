@@ -732,10 +732,11 @@ def close_all_open_orders(client, account_hash, from_time, to_time, position_typ
     global logger
 
     parsed_orders = []
-    linked_accounts_response = client.account_linked()     
-    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    # linked_accounts_response = client.account_linked()     
+    # account_hash = linked_accounts_response.json()[0].get('hashValue')
     response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
     orders = response.json()
+    # print(orders)
     for order in orders:
         # Get the symbol from the first leg
         symbol = order['orderLegCollection'][0]['instrument']['symbol']
@@ -762,9 +763,11 @@ def close_all_open_orders(client, account_hash, from_time, to_time, position_typ
         
     # Create DataFrame
     df = pd.DataFrame(parsed_orders)
-    
+    print(df)
     # Filter for only WORKING orders with matching position type
     df = df[(df['Status'] == 'WORKING') & (df['Instruction'] == position_type)]
+    logger.info(f"Found {len(df)} orders to cancel")
+
     # Cancel each working order
     for order_id in df['OrderId']:
         cancel_response = client.order_cancel(account_hash, order_id)
