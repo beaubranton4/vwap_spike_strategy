@@ -109,7 +109,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     logger = setup_screener_logging()
     start_clock = datetime.now()
     
-    logger.info("Starting VWAP spike screener")
+    logger.info("Starting VWAP spike screener for date: " + str(day_of_backtest))
     logger.info(f"Processing {len(ticker_list)} tickers for date {day_of_backtest}")
     
     # Get tickers list
@@ -166,6 +166,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                 
                 # Convert to DataFrame
                 stahks = pd.DataFrame(stock_data['candles'])
+                # stahks.to_csv(f'debugging.csv', index=False)
                 
                 # Ensure all required fields are present
                 required_fields = ['datetime', 'open', 'high', 'low', 'close', 'volume']

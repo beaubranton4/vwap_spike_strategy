@@ -486,7 +486,7 @@ def get_market_times(market_schedule, today):
     """Calculate market-related times for scheduling"""
     times = {
         'schedule_refresh': "00:05:00",
-        'screener': "00:10:00",
+        'screener': "01:00:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
         'close_open_short_orders': "10:31:00",

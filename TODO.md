@@ -1,5 +1,5 @@
---copy paste run_backtest
--- fix close open positions
+--fix screener not catching stocks. may need to change time of day to run screener closer to market open. the schwab api must have not been sending data at 12:05AM ET in the morning on Tuesday Dec 17th
+-- fix logging for screener
 -- run backtest for other combinations now that strategy has been tuned
 --------------------------------------------------------------------------------------------------
 -- Join peformance csv with screener to get info on what stocks performed well.

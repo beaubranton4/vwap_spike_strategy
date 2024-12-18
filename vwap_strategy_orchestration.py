@@ -25,7 +25,7 @@ def main():
     
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
-    print(datetime.now(eastern).date())
+    # print(datetime.now(eastern).date())
     ############STEP 1: RUN DAILY SCREENER (5pm ET)####################
 
     # May need to seperate screener and executor (will run at different times)

@@ -122,17 +122,18 @@ def main():
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
     print(account_balance)
-
+    last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
+    print(last_market_day)
     # Initialize client and get account hash
-    linked_accounts_response = client.account_linked()
-    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    # linked_accounts_response = client.account_linked()
+    # account_hash = linked_accounts_response.json()[0].get('hashValue')
     
-    # Set time range to last 24 hours
-    to_time = datetime.now()
-    from_time = to_time - timedelta(days=1)
+    # # Set time range to last 24 hours
+    # to_time = datetime.now()
+    # from_time = to_time - timedelta(days=1)
     
-    # Close all open SELL_SHORT orders
-    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
+    # # Close all open SELL_SHORT orders
+    # close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
     
     # if linked_accounts_response.status_code != 200:
     #     logger.error(f"Failed to place order for {symbol}")
