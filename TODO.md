@@ -1,4 +1,5 @@
 --fix screener not catching stocks. may need to change time of day to run screener closer to market open. the schwab api must have not been sending data at 12:05AM ET in the morning on Tuesday Dec 17th
+-- maybe can try a second screener that runs right before market open.
 -- fix logging for screener
 -- run backtest for other combinations now that strategy has been tuned
 --------------------------------------------------------------------------------------------------

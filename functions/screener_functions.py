@@ -28,9 +28,8 @@ def setup_screener_logging():
     """Setup logging for screener functions with ET date-based log file"""
     logger = logging.getLogger(__name__)
     
-    # If the logger already has handlers, assume it's configured
-    if logger.handlers:
-        return logger
+    # Clear any existing handlers
+    logger.handlers.clear()
     
     # Prevent propagation to root logger
     logger.propagate = False
