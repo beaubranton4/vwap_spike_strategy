@@ -187,6 +187,13 @@ def run_daily_screener():
     try:
         # Check yesterday's date
         last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
+        
+        # Define start_time and end_time for the screener
+        end_datetime = datetime.now(pytz.timezone('US/Eastern'))  # SCREENER WILL RUN AS OF THIS DAY
+        start_datetime = end_datetime - timedelta(days=20)
+
+        start_datetime_ms = str(int(start_datetime.timestamp()) * 1000)
+        end_datetime_ms = str(int(end_datetime.timestamp()) * 1000)
 
         client = get_authenticated_client()
         logger.info("Starting daily screener...")
@@ -199,8 +206,8 @@ def run_daily_screener():
             period=period,
             frequency_type=frequency_type,
             frequency=frequency,
-            start_time=start_time,
-            end_time=end_time,
+            start_time=start_datetime_ms,
+            end_time=end_datetime_ms,
             need_extended_hours_data=need_extended_hours_data,
             need_previous_close=need_previous_close,
             rolling_lookback=rolling_lookback,
@@ -486,7 +493,7 @@ def get_market_times(market_schedule, today):
     """Calculate market-related times for scheduling"""
     times = {
         'schedule_refresh': "00:05:00",
-        'screener': "01:00:00",
+        'screener': "00:10:00",
         'premarket': "09:29:30",
         'market_open': "09:30:00",
         'close_open_short_orders': "10:31:00",

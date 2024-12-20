@@ -1,7 +1,4 @@
---fix screener not catching stocks. may need to change time of day to run screener closer to market open. the schwab api must have not been sending data at 12:05AM ET in the morning on Tuesday Dec 17th
--- maybe can try a second screener that runs right before market open.
--- fix logging for screener
--- run backtest for other combinations now that strategy has been tuned
+-- Figure out why screener is not running 2nd day after starting main.py
 --------------------------------------------------------------------------------------------------
 -- Join peformance csv with screener to get info on what stocks performed well.
 -- Add cumulative performance to screener
@@ -9,15 +6,15 @@
 
 -- Create update_ticker_list.py to update the ticker_list.csv file with the latest tickers.
 
+--------------------------------------------------------------------------------------------------
+
+-- Analyze what percentage of pre-market screener stocks are actually shorted.
 
     ------------------------------------------------------------------------------------------------------
     - Logging for end of day close. why didn't PYPL close the short?
-    -----------------------------------------------------------------------------------------------------
-    
-    - Test VM runs autonomously 24/7 to ensure no issues
-    - NEXT ENSURE KEEPING THIS THING RUNNING 24/7 WON'T CREATE ANY ISSUES
-        - Logging should be minimized
-        - File stores should be cleaned up
+
+-----------------------------------------------------------------------------------------------------
+   
     - Optimize VM costs:
         - Can try and schedule VM instance to only run weekdays. (8-4pm while premarket screener is being used that only pulls since 7am)
         - Other tactics to scale down cost:
@@ -33,15 +30,6 @@
         - Start at 1am ET
 
     
-    
-------------------------------------------------------------------------------------------------------
-
-    - Get backtest working using schwabdev API and create into a function (add to backtest_functions.py folder)
-
-------------------------------------------------------------------------------------------------------
-
-    - Investigate why VM is crashing while working on it and no real process is running. Is it cursor?
-
 ------------------------------------------------------------------------------------------------------
 
 - OTHER TO-DO's
