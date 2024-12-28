@@ -1,4 +1,25 @@
--- Figure out why screener is not running 2nd day after starting main.py
+
+-- Figure out why screener didn't run properly on 12/26/2024 ET
+    -- 12/24 was a half day...
+
+--------------------------------------------------------------------------------------------------
+
+-- Authentication failed and bot got stuck.
+        INFO:Schwabdev.Tokens:The refresh token will expire soon! (-02H:41M:29S remaining)
+    WARNING:Schwabdev.Tokens:The refresh token has expired!
+    [Schwabdev] Open to authenticate: https://api.schwabapi.com/v1/oauth/authorize?client_id=yu3dLbGnr3AXs5j1B9Wjhag1JtzEdXM8&redirect_uri=https://127.0.0.1
+    Unable to connect to VS Code server: Error in request.
+    Error: connect ENOENT /run/user/1000/vscode-ipc-7bd35661-5e12-4f1d-b24f-43b6a2bbe074.sock
+        at PipeConnectWrap.afterConnect [as oncomplete] (node:net:1606:16) {
+    errno: -2,
+    code: 'ENOENT',
+    syscall: 'connect',
+    address: '/run/user/1000/vscode-ipc-7bd35661-5e12-4f1d-b24f-43b6a2bbe074.sock'
+--------------------------------------------------------------------------------------------------
+-- Error thrown in close_all_open_orders function
+    
+--------------------------------------------------------------------------------------------------
+-- Refresh ticker list (automatically)
 --------------------------------------------------------------------------------------------------
 -- Join peformance csv with screener to get info on what stocks performed well.
 -- Add cumulative performance to screener

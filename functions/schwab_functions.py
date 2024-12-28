@@ -729,53 +729,52 @@ def close_matched_positions(client: Client, df: pd.DataFrame) -> None:
 
 #Function to check for all open orders and cancel them
 def close_all_open_orders(client, account_hash, from_time, to_time, position_type):
-    global logger
-
-    parsed_orders = []
-    # linked_accounts_response = client.account_linked()     
-    # account_hash = linked_accounts_response.json()[0].get('hashValue')
-    response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
-    orders = response.json()
-    # print(orders)
-    for order in orders:
-        # Get the symbol from the first leg
-        symbol = order['orderLegCollection'][0]['instrument']['symbol']
+    # Setup logging
+    log_dir = 'logs/close_open_orders'
+    os.makedirs(log_dir, exist_ok=True)
+    log_date = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
+    
+    # Create file handler with ET timezone formatting
+    file_handler = logging.FileHandler(f'{log_dir}/{log_date}.log')
+    formatter = logging.Formatter('%(asctime)s ET - %(levelname)s - %(message)s', 
+                                datefmt='%Y-%m-%d %H:%M:%S')
+    file_handler.setFormatter(formatter)
+    
+    logger = logging.getLogger(__name__)
+    logger.addHandler(file_handler)
+    
+    try:
+        # Get and parse orders
+        response = client.account_orders_all(fromEnteredTime=from_time, toEnteredTime=to_time)
+        orders = response.json()
+        logger.info(f"Found {len(orders)} total orders to process")
         
-        # Parse timestamps
-        entered_time = datetime.strptime(order['enteredTime'], '%Y-%m-%dT%H:%M:%S%z')
-        close_time = datetime.strptime(order.get('closeTime', order['enteredTime']), '%Y-%m-%dT%H:%M:%S%z')
-        
-        # Get execution price if available
-        exec_price = None
-        if 'orderActivityCollection' in order:
-            for activity in order['orderActivityCollection']:
-                if activity['activityType'] == 'EXECUTION' and activity['executionType'] == 'FILL':
-                    exec_price = activity['executionLegs'][0]['price']
-                    break
-        
-        parsed_order = {
+        # Create DataFrame of working orders
+        parsed_orders = [{
             'OrderId': order['orderId'],
             'Status': order['status'],
-            'Symbol': symbol,
+            'Symbol': order['orderLegCollection'][0]['instrument']['symbol'],
             'Instruction': order['orderLegCollection'][0]['instruction']
-        }
-        parsed_orders.append(parsed_order)
+        } for order in orders]
         
-    # Create DataFrame
-    df = pd.DataFrame(parsed_orders)
-    print(df)
-    # Filter for only WORKING orders with matching position type
-    df = df[(df['Status'] == 'WORKING') & (df['Instruction'] == position_type)]
-    logger.info(f"Found {len(df)} orders to cancel")
-
-    # Cancel each working order
-    for order_id in df['OrderId']:
-        cancel_response = client.order_cancel(account_hash, order_id)
-        if cancel_response.status_code != 200:
-            logger.error(f"Failed to cancel order {order_id} for {symbol}")
-        else:
-            logger.info(f"Successfully cancelled order {order_id} for {symbol}")
-    return
+        df = pd.DataFrame(parsed_orders)
+        logger.info(f"Parsed orders DataFrame:\n{df}")
+        
+        # Filter and cancel working orders
+        working_orders = df[(df['Status'] == 'WORKING') & (df['Instruction'] == position_type)]
+        logger.info(f"Found {len(working_orders)} {position_type} orders to cancel")
+        
+        for order_id in working_orders['OrderId']:
+            cancel_response = client.order_cancel(account_hash, order_id)
+            logger.info(f"{'Successfully cancelled order ' + str(order_id) if cancel_response.status_code == 200 else f'Failed to cancel order {order_id}'}")
+                
+    except Exception as e:
+        logger.error(f"Error in close_all_open_orders: {str(e)}")
+        logger.error(traceback.format_exc())
+    
+    finally:
+        logger.removeHandler(file_handler)
+        file_handler.close()
 
 #SCHWAB API DOCUMENTATION FOR ORDERS
 # https://developer.schwab.com/docs/services/5b3323445b3323445b332344/operations/5b3323445b3323445b332345
