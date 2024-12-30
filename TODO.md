@@ -1,4 +1,8 @@
 
+-- Run Backtest again and see how it compares to performance of actual trading
+-- Update backtest so that we aren't buying and selling at the same time just based off of high and low prices. the high must occur before the low. (Might be end of strategy)
+--------------------------------------------------------------------------------------------------
+
 -- Figure out why screener didn't run properly on 12/26/2024 ET
     -- 12/24 was a half day...
 
@@ -17,7 +21,7 @@
     address: '/run/user/1000/vscode-ipc-7bd35661-5e12-4f1d-b24f-43b6a2bbe074.sock'
 --------------------------------------------------------------------------------------------------
 -- Error thrown in close_all_open_orders function
-    
+
 --------------------------------------------------------------------------------------------------
 -- Refresh ticker list (automatically)
 --------------------------------------------------------------------------------------------------

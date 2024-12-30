@@ -39,7 +39,7 @@ need_previous_close = 'true'  # Current value
 
 ######################################## TESTING COMBINATION OF INPUTS FOR STRATEGY  ########################################
 ACCOUNT_SIZE = 1  # Using get_account_balance function to retrieve account balance
-ALLOCATION = 0.125
+ALLOCATION = 0.1
 
 BET_SIZE = [ALLOCATION]  # FIXED
 STOP = [0.1]  # FIXED # Removed .05

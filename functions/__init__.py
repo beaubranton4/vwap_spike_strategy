@@ -7,7 +7,8 @@ from .backtest_functions import (
     buy_sell_signal,
     calculate_sell_results,
     buy_sell,
-    run_vwap_spike_screener_backtest    
+    run_vwap_spike_screener_backtest,
+    process_stock_data
 )
 
 # Importing specific functions from the schwab_functions module
@@ -56,6 +57,7 @@ __all__ = [
     'calculate_sell_results',
     'buy_sell',
     'run_vwap_spike_screener_backtest',
+    'process_stock_data',
     
     # Schwab API functions
     'auto_authenticate',

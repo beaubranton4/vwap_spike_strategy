@@ -124,23 +124,23 @@ def main():
     # print(account_balance)
     # last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
     # print(last_market_day)
-    stock_data = get_price_history_with_schwabdev(
-                    client=client,
-                    ticker='AAPL',
-                    period_type=period_type,
-                    period=period,
-                    frequency_type=frequency_type,
-                    frequency=frequency,
-                    start_time=start_time,
-                    end_time=end_time,
-                    need_extended_hours_data=need_extended_hours_data,
-                    need_previous_close=need_previous_close,
-                    max_retries=3,
-                    retry_delay=1
-                )
-    stahks = pd.DataFrame(stock_data['candles'])
-    stahks['datetime'] = pd.to_datetime(stahks['datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
-    stahks.to_csv('tester.csv', index=False)
+    # stock_data = get_price_history_with_schwabdev(
+    #                 client=client,
+    #                 ticker='AAPL',
+    #                 period_type=period_type,
+    #                 period=period,
+    #                 frequency_type=frequency_type,
+    #                 frequency=frequency,
+    #                 start_time=start_time,
+    #                 end_time=end_time,
+    #                 need_extended_hours_data=need_extended_hours_data,
+    #                 need_previous_close=need_previous_close,
+    #                 max_retries=3,
+    #                 retry_delay=1
+    #             )
+    # stahks = pd.DataFrame(stock_data['candles'])
+    # stahks['datetime'] = pd.to_datetime(stahks['datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
+    # stahks.to_csv('tester.csv', index=False)
     
     # Initialize client and get account hash
     # linked_accounts_response = client.account_linked()

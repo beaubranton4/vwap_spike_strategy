@@ -43,15 +43,24 @@ def main():
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
 
+    # PERCENT_ALLOCATION = [0.1]  # FIXED
+    # STOP_LOSS_PERCENT = [0.1, .05, .15]  # FIXED # Removed .05
+    # PROFIT_TARGET_PERCENT = [0.05, .1, .15]  # FIXED
+
+    # VOLUME_SPIKE_SIGNAL = [5, 10]  # Abnormally high volume that stands out on a chart
+    # PRICE_SPIKE_SIGNAL = [0.05, .1]  # Must move the price x%
+    # SPIKE_TIME_LIMIT = [time(hour=12, minute=30, second=0)]
+    # ENTRY_TIME_LIMIT = [time(hour=10, minute=30, second=0), time(hour =11, minute=30, second = 0)]
+    # EXIT_TIME_LIMIT = [time(hour=15, minute=30, second=0)]
 
     PERCENT_ALLOCATION = [0.1]  # FIXED
-    STOP_LOSS_PERCENT = [0.1, .05, .15]  # FIXED # Removed .05
-    PROFIT_TARGET_PERCENT = [0.05, .1, .15]  # FIXED
+    STOP_LOSS_PERCENT = [0.1]  # FIXED # Removed .05
+    PROFIT_TARGET_PERCENT = [0.05]  # FIXED
 
-    VOLUME_SPIKE_SIGNAL = [5, 10]  # Abnormally high volume that stands out on a chart
-    PRICE_SPIKE_SIGNAL = [0.05, .1]  # Must move the price x%
+    VOLUME_SPIKE_SIGNAL = [5]  # Abnormally high volume that stands out on a chart
+    PRICE_SPIKE_SIGNAL = [0.05]  # Must move the price x%
     SPIKE_TIME_LIMIT = [time(hour=12, minute=30, second=0)]
-    ENTRY_TIME_LIMIT = [time(hour=10, minute=30, second=0), time(hour =11, minute=30, second = 0)]
+    ENTRY_TIME_LIMIT = [time(hour=10, minute=30, second=0)]
     EXIT_TIME_LIMIT = [time(hour=15, minute=30, second=0)]
 
     ####################################### CREATE VARIABLES FOR INPUT STRATEGY TO TEST ##########################

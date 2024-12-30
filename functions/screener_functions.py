@@ -143,8 +143,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         # Process current chunk of tickers
         for ticker in current_tickers:
             try:
-                # Get stock price history using schwabdev
-                stock_data = get_price_history_with_schwabdev(
+                
+                stahks = process_stock_data(
                     client=client,
                     ticker=ticker,
                     period_type=period_type,
@@ -155,76 +155,10 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                     end_time=end_time,
                     need_extended_hours_data=need_extended_hours_data,
                     need_previous_close=need_previous_close,
-                    max_retries=3,
-                    retry_delay=1
+                    rolling_lookback=rolling_lookback,
+                    open_close_schedule=open_close_schedule,
+                    tickers_per_day=tickers_per_day
                 )
-                
-                if not stock_data or 'candles' not in stock_data:
-                    print(f"No data available for {ticker}")
-                    continue
-                
-                # Convert to DataFrame
-                stahks = pd.DataFrame(stock_data['candles'])
-                # stahks.to_csv(f'debugging.csv', index=False)
-                
-                # Ensure all required fields are present
-                required_fields = ['datetime', 'open', 'high', 'low', 'close', 'volume']
-                if not all(field in stahks.columns for field in required_fields):
-                    print(f"Missing required fields for {ticker}. Available columns: {stahks.columns}")
-                    continue
-                
-                # Rename columns to match the required format
-                stahks.rename(columns={
-                    'datetime': 'Datetime',
-                    'open': 'Open',
-                    'high': 'High',
-                    'low': 'Low',
-                    'close': 'Close',
-                    'volume': 'Volume'
-                }, inplace=True)
-                
-                # Convert Datetime to EST
-                stahks['Datetime'] = pd.to_datetime(stahks['Datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
-
-                #Skip stock if there is insufficient amount of data
-                end_check = stahks['Datetime'].max()
-                start_check = stahks['Datetime'].min()
-                daydiff = end_check.weekday() - start_check.weekday()
-                days = ((end_check-start_check).days - daydiff) / 7 * 5 + min(daydiff,5) - (max(end_check.weekday() - 4, 0) % 5)
-                
-                stahks['Ticker'] = ticker
-                stahks['Date'] = stahks['Datetime'].dt.date
-                stahks = stahks.merge(open_close_schedule,how = 'left', on = 'Date')
-
-                # Calculate average volume
-                rolling_lookback_int = int(rolling_lookback)
-                stahks['10_Day_Avg_Vol'] = stahks.Volume.rolling(rolling_lookback_int, min_periods=rolling_lookback_int).mean()
-                stahks['10_Day_Avg_Vol'] = stahks['10_Day_Avg_Vol'].fillna(float('inf'))
-                stahks['Time'] = stahks['Datetime'].dt.time
-                
-                stahks.drop_duplicates(['Ticker','Date','Time'],inplace = True,ignore_index=True)
-                
-                if len(stahks.index) < (days * tickers_per_day):
-                    continue
-                    
-                # Calculate additional metrics
-                cond = (stahks['Time'] == stahks['market_open'])
-                stahks['Day_Open_Low'] = stahks[cond].groupby('Date', as_index=True)['Low'].transform('min').ffill()
-
-                stahks['After Hours'] = (stahks['Time'] > stahks['market_close']) | (stahks['Time'] < stahks['market_open'])
-
-                cond_2 = (stahks['Time'] < stahks['market_open'])
-                stahks['Pre-Market High'] = stahks[cond_2].groupby('Date', as_index=True)['High'].transform('max')
-                
-                stahks = stahks.ffill(axis=0)
-                stahks = stahks.bfill(axis=0)
-
-                # Calculate VWAP metrics
-                stahks['VWAP_Row'] = stahks['Volume']*((stahks['High']+stahks['Low']+stahks['Close'])/3)
-                stahks['VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum')/stahks.groupby('Date')['Volume'].transform('cumsum')
-                # stahks['VWAP_STD_1'] = stahks['VWAP'] - stahks.groupby('Date')['VWAP'].transform('std')
-                # stahks['Color_Bar'] = np.where(stahks['Open']<=stahks['Close'], 'Green', 'Red')
-                stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
 
                 stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
                 # print(f"{ticker} processed successfully.")
@@ -291,7 +225,6 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                         TEMP_SIGNAL_TIME = row['Time']
                         VOLUME_SPIKE = row['Volume']/row['10_Day_Avg_Vol']
                         PRICE_SPIKE = (row['High']-row['Day_Open_Low'])/row['Day_Open_Low']
-                        YESTERDAY_HIGH = row['high_of_day']
 
                     if (row['Close']<=TARGET_ENTRY_PRICE) & (row['Day_Close'] == True) & (row['Date'] == TEMP_SIGNAL_DAY):
                         print('Got in thur')
@@ -302,7 +235,6 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                         stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                         stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
                         # stocks_to_trade.at[RESULT_INDEXER,'Shares'] = int(500/TARGET_ENTRY_PRICE)
-                        stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = YESTERDAY_HIGH
                         stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]                 

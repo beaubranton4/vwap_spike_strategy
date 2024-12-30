@@ -281,7 +281,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     
     global ENTRY_PRICE, POSITION, ENTRY_TIME, ACCOUNT_SIZE, BUYS, RESULT_INDEXER, BOUGHT_TODAY
     global TEMP_SIGNAL_DAY, OK_TO_BUY_DAY, TARGET_ENTRY_PRICE, SIGNAL_TIME
-    global VOLUME_SPIKE, PRICE_SPIKE_TEMP, YESTERDAY_HIGH, OPTIMAL_ENTRY_TIME, OPTIMAL_EXIT_TIME
+    global VOLUME_SPIKE, PRICE_SPIKE_TEMP, OPTIMAL_ENTRY_TIME, OPTIMAL_EXIT_TIME
     global PREVIOUS_DAY_CLOSE, RESULT_INDEXER
     global ACCOUNT_SIZE
     global results, inputs, signal
@@ -327,7 +327,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    # all_tickers = ['DQ']
+    all_tickers = ['MVIS']
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
@@ -352,8 +352,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         try:
             logger.info(f"Processing {ticker}")
             
-            # Get stock price history using schwabdev
-            stock_data = get_price_history_with_schwabdev(
+            stahks = process_stock_data(
                 client=client,
                 ticker=ticker,
                 period_type=period_type,
@@ -364,75 +363,10 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 end_time=end_time,
                 need_extended_hours_data=need_extended_hours_data,
                 need_previous_close=need_previous_close,
-                max_retries=3,
-                retry_delay=1
+                rolling_lookback=rolling_lookback,
+                open_close_schedule=open_close_schedule,
+                tickers_per_day=tickers_per_day
             )
-            
-            if not stock_data or 'candles' not in stock_data:
-                print(f"No data available for {ticker}")
-                continue
-            
-            # Convert to DataFrame
-            stahks = pd.DataFrame(stock_data['candles'])
-            
-            # Ensure all required fields are present
-            required_fields = ['datetime', 'open', 'high', 'low', 'close', 'volume']
-            if not all(field in stahks.columns for field in required_fields):
-                print(f"Missing required fields for {ticker}. Available columns: {stahks.columns}")
-                continue
-            
-            # Rename columns to match the required format
-            stahks.rename(columns={
-                'datetime': 'Datetime',
-                'open': 'Open',
-                'high': 'High',
-                'low': 'Low',
-                'close': 'Close',
-                'volume': 'Volume'
-            }, inplace=True)
-            
-            # Convert Datetime to EST
-            stahks['Datetime'] = pd.to_datetime(stahks['Datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
-
-            #Skip stock if there is insufficient amount of data
-            end_check = stahks['Datetime'].max()
-            start_check = stahks['Datetime'].min()
-            daydiff = end_check.weekday() - start_check.weekday()
-            days = ((end_check-start_check).days - daydiff) / 7 * 5 + min(daydiff,5) - (max(end_check.weekday() - 4, 0) % 5)
-            
-            stahks['Ticker'] = ticker
-            stahks['Date'] = stahks['Datetime'].dt.date
-            stahks = stahks.merge(open_close_schedule,how = 'left', on = 'Date')
-
-            # Calculate average volume
-            rolling_lookback_int = int(rolling_lookback)
-            stahks['10_Day_Avg_Vol'] = stahks.Volume.rolling(rolling_lookback_int, min_periods=rolling_lookback_int).mean()
-            stahks['10_Day_Avg_Vol'] = stahks['10_Day_Avg_Vol'].fillna(float('inf'))
-            stahks['Time'] = stahks['Datetime'].dt.time
-            
-            stahks.drop_duplicates(['Ticker','Date','Time'],inplace = True,ignore_index=True)
-            
-            if len(stahks.index) < (days * tickers_per_day):
-                continue
-                
-            # Calculate additional metrics
-            cond = (stahks['Time'] == stahks['market_open'])
-            stahks['Day_Open_Low'] = stahks[cond].groupby('Date', as_index=True)['Low'].transform('min').ffill()
-
-            stahks['After Hours'] = (stahks['Time'] > stahks['market_close']) | (stahks['Time'] < stahks['market_open'])
-
-            cond_2 = (stahks['Time'] < stahks['market_open'])
-            stahks['Pre-Market High'] = stahks[cond_2].groupby('Date', as_index=True)['High'].transform('max')
-            
-            stahks = stahks.ffill(axis=0)
-            stahks = stahks.bfill(axis=0)
-
-            # Calculate VWAP metrics
-            stahks['VWAP_Row'] = stahks['Volume']*((stahks['High']+stahks['Low']+stahks['Close'])/3)
-            stahks['VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum')/stahks.groupby('Date')['Volume'].transform('cumsum')
-            # stahks['VWAP_STD_1'] = stahks['VWAP'] - stahks.groupby('Date')['VWAP'].transform('std')
-            # stahks['Color_Bar'] = np.where(stahks['Open']<=stahks['Close'], 'Green', 'Red')
-            stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
 
             stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
             # print(f"{ticker} processed successfully.")
@@ -498,8 +432,6 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             stockies[ticker]['high_price_sig'] = high_price_sig
             
             stockies[ticker]['sell_time'] = np.where(stockies[ticker]['Time'] == strategy[sell_time_threshold_index],'True','False')
-            
-            stockies[ticker]['high_of_day'] = stockies[ticker].groupby('Date')['High'].transform('max')
 
             stockies[ticker]['Grab_Price_Signal'] = np.where((high_vol_sig == 'True') 
                                                                 & (vol_spike_sig == 'True') 
@@ -533,7 +465,6 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             OPTIMAL_EXIT = 0.0
             VOLUME_SPIKE = 0.0
             PRICE_SPIKE_TEMP = 0.0
-            YESTERDAY_HIGH = 0.0
 
             OPTIMAL_ENTRY_TIME = 0.0
             OPTIMAL_EXIT_TIME = 0.0
@@ -558,7 +489,6 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     SIGNAL_TIME = row['Time']
                     VOLUME_SPIKE = row['Volume']/row['10_Day_Avg_Vol']
                     PRICE_SPIKE = (row['High']-row['Day_Open_Low'])/row['Day_Open_Low']
-                    YESTERDAY_HIGH = row['high_of_day']
 
                 # Store previous OK_TO_BUY_DAY before potentially updating it
                 previous_ok_to_buy = OK_TO_BUY_DAY
@@ -579,31 +509,58 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     stockies[ticker].at[index,'Signal Time'] = SIGNAL_TIME
                     stockies[ticker].at[index,'Volume Spike'] = VOLUME_SPIKE
                     stockies[ticker].at[index,'Price_Spike_From_Open'] = PRICE_SPIKE
-                    stockies[ticker].at[index,'Yesterday High'] = YESTERDAY_HIGH
                     stockies[ticker].at[index,'Target_Entry_Price'] = TARGET_ENTRY_PRICE
 
             # stockies[ticker].to_csv(f'backtest_results/debugging/stockies_{ticker}.csv', index=False, header=True)
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]
-            # stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
-
-                
-            #Check that pre-market high wasn't higher than yesterday's high bar (in backtest)
-            #Use variable for yesterday's high that switches on signal to equal high price of signal
-            #Compare to yesterday's high bar       
-            #Check that pre-market high wasn't higher than yesterday's high bar (in backtest)
-            #Use variable for yesterday's high that switches on signal to equal high price of signal
-            #Compare to yesterday's high bar
+            stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
 
             #If there are no signals - skip to next stock.
             if len(stockies[ticker][stockies[ticker]['Ok_To_Buy']== 'True']) == 0:
                 continue      
-                
-            # After the loop
-            # if stockies[ticker]['Ok_To_Buy'].any():
-            #     print(f"Found Ok_To_Buy signals for dates:")
-            #     print(stockies[ticker][stockies[ticker]['Ok_To_Buy'] == 'True'][['Date', 'Grab_Price_Signal', 'Close_Condition']])
+            
+            stonks_5m = pd.DataFrame()
+
+            unique_tickers_dates = stonks[['Ticker', 'Date']].drop_duplicates()
+
+            for _, row in unique_tickers_dates.iterrows():
+                ticker = row['Ticker']
+                date = row['Date']
+
+                # Retrieve 5m stock data for the entire day
+                five_min_data = process_stock_data(
+                    client=client,
+                    ticker=ticker,
+                    period_type=period_type,
+                    period=period,
+                    frequency_type=frequency_type,
+                    frequency=5,
+                    start_time=str(int(pd.Timestamp(date).timestamp())*1000),
+                    end_time=str(int((pd.Timestamp(date) + pd.Timedelta(days=1)).timestamp())*1000),
+                    need_extended_hours_data=need_extended_hours_data,
+                    need_previous_close=need_previous_close,
+                    rolling_lookback=rolling_lookback,
+                    open_close_schedule=open_close_schedule,
+                    tickers_per_day=tickers_per_day
+                )
+
+                if five_min_data is not None:
+                    # Join the 5m data with stonks on Ticker and Date
+                    five_min_data['Date'] = five_min_data['Datetime'].dt.date
+                    if five_min_data is not None:
+                        merged_data = five_min_data.merge(stonks[[
+                            'Ticker', 'Date', 'Yesterday High', 'Pre-Market High',
+                            'Target_Entry_Price', 'Volume', 'Previous_Day_Close',
+                            'Volume Spike', 'Price_Spike_From_Open'
+                        ]], on=['Ticker', 'Date'], how='left')
+                        stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
+
+            # Save stonks_5m to a CSV file
+            stonks_5m.to_csv('5m_test.csv', index=False, header=True)
+            # THIS IS WHERE I CAN BRING IN 5m bars, join to stonks and use it to calculate results
+
         #########################################  BACKTEST IMPLEMENTATION AND SIMULATION OF BUY AND SELL SIGNALS  ##################################################
             
             POSITION = 'Neutral'
@@ -746,3 +703,103 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         logger.info("No trades executed")
     
     return results
+
+#Function that calculates various metrics for a stock given candle information such as high, low, close, volume, etc.
+def process_stock_data(client, ticker, period_type, period, frequency_type, frequency, 
+                      start_time, end_time, need_extended_hours_data, need_previous_close, 
+                      rolling_lookback, open_close_schedule, tickers_per_day):
+    """
+    Process stock price history data and return formatted DataFrame
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Get stock price history
+        stock_data = get_price_history_with_schwabdev(
+            client=client,
+            ticker=ticker,
+            period_type=period_type,
+            period=period,
+            frequency_type=frequency_type,
+            frequency=frequency,
+            start_time=start_time,
+            end_time=end_time,
+            need_extended_hours_data=need_extended_hours_data,
+            need_previous_close=need_previous_close,
+            max_retries=3,
+            retry_delay=1
+        )
+        
+        if not stock_data or 'candles' not in stock_data:
+            logger.info(f"No data available for {ticker}")
+            return None
+            
+        # Convert to DataFrame and validate
+        stahks = pd.DataFrame(stock_data['candles'])
+        required_fields = ['datetime', 'open', 'high', 'low', 'close', 'volume']
+        if not all(field in stahks.columns for field in required_fields):
+            logger.info(f"Missing required fields for {ticker}")
+            return None
+            
+        # Format DataFrame
+        stahks.rename(columns={
+            'datetime': 'Datetime',
+            'open': 'Open',
+            'high': 'High',
+            'low': 'Low',
+            'close': 'Close',
+            'volume': 'Volume'
+        }, inplace=True)
+        
+        # Process datetime
+        stahks['Datetime'] = pd.to_datetime(stahks['Datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
+        
+        # Check data sufficiency
+        end_check = stahks['Datetime'].max()
+        start_check = stahks['Datetime'].min()
+        daydiff = end_check.weekday() - start_check.weekday()
+        days = ((end_check-start_check).days - daydiff) / 7 * 5 + min(daydiff,5) - (max(end_check.weekday() - 4, 0) % 5)
+        
+        # Add basic fields
+        stahks['Ticker'] = ticker
+        stahks['Date'] = stahks['Datetime'].dt.date
+        stahks = stahks.merge(open_close_schedule, how='left', on='Date')
+        
+        # Calculate volume metrics
+        stahks['10_Day_Avg_Vol'] = stahks.Volume.rolling(int(rolling_lookback), min_periods=int(rolling_lookback)).mean()
+        stahks['10_Day_Avg_Vol'] = stahks['10_Day_Avg_Vol'].fillna(float('inf'))
+        stahks['Time'] = stahks['Datetime'].dt.time
+        
+        # Remove duplicates
+        stahks.drop_duplicates(['Ticker','Date','Time'], inplace=True, ignore_index=True)
+        
+        if len(stahks.index) < (days * tickers_per_day):
+            return None
+            
+        # Calculate additional metrics
+        stahks['Day_Open_Low'] = stahks[stahks['Time'] == stahks['market_open']].groupby('Date', as_index=True)['Low'].transform('min').ffill()
+        stahks['After Hours'] = (stahks['Time'] > stahks['market_close']) | (stahks['Time'] < stahks['market_open'])
+        stahks['Pre-Market High'] = stahks[stahks['Time'] < stahks['market_open']].groupby('Date', as_index=True)['High'].transform('max')
+        stahks['high_of_day'] = stahks.groupby(['Date', 'Ticker'])['High'].transform('max')
+        
+        # Get daily highs and shift by one trading day
+        daily_highs = stahks.groupby('Date')['high_of_day'].max()
+        yesterday_highs = daily_highs.shift(1)
+        
+        # Map back to original DataFrame
+        stahks['Yesterday High'] = stahks['Date'].map(yesterday_highs)
+        
+        # Fill missing values
+        stahks = stahks.ffill(axis=0).bfill(axis=0)
+        
+        # Calculate VWAP
+        stahks['VWAP_Row'] = stahks['Volume'] * ((stahks['High'] + stahks['Low'] + stahks['Close'])/3)
+        stahks['VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum') / stahks.groupby('Date')['Volume'].transform('cumsum')
+        stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
+        
+        return stahks
+        
+    except Exception as e:
+        logger.error(f"Error processing {ticker}: {str(e)}")
+        logger.error(traceback.format_exc())
+        return None
