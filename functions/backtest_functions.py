@@ -472,10 +472,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             POSITION = 'Neutral'
 
             # Save stockies to see its structure 
-            # stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
-
-            # test = f'./test/backtest.xlsx'
-            # stockies[ticker].to_excel(test, index=False, header=True)
+            stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
 
             #Iterate over rows to see which rows meet the close condition and the all clear to buy signal (pending final signal: price cross)
             #Unique to this strategy's backtest. Could be a part of inserting variables and signals before BACKTEST SECTION
@@ -549,16 +546,20 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 if five_min_data is not None:
                     # Join the 5m data with stonks on Ticker and Date
                     five_min_data['Date'] = five_min_data['Datetime'].dt.date
+                    # Create a unique list of the columns we'll need for merging
+                    daily_values = stonks[[
+                        'Ticker', 'Date', 
+                        'Target_Entry_Price', 'Previous_Day_Close', 
+                        'Volume Spike', 'Price_Spike_From_Open'
+                    ]].drop_duplicates()
+                    # Save daily values to CSV for debugging
+                    daily_values.to_csv(f'./backtest_results/debugging/BACKTEST_DAILY_VALUES_{ticker}.csv', index=True, header=True)
                     if five_min_data is not None:
-                        merged_data = five_min_data.merge(stonks[[
-                            'Ticker', 'Date', 'Yesterday High', 'Pre-Market High',
-                            'Target_Entry_Price', 'Volume', 'Previous_Day_Close',
-                            'Volume Spike', 'Price_Spike_From_Open'
-                        ]], on=['Ticker', 'Date'], how='left')
+                        merged_data = five_min_data.merge(daily_values, on=['Ticker', 'Date'], how='left')
                         stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
 
             # Save stonks_5m to a CSV file
-            stonks_5m.to_csv('5m_test.csv', index=False, header=True)
+            stonks_5m.to_csv('./backtest_results/debugging/5m_test.csv', index=False, header=True)
             # THIS IS WHERE I CAN BRING IN 5m bars, join to stonks and use it to calculate results
 
         #########################################  BACKTEST IMPLEMENTATION AND SIMULATION OF BUY AND SELL SIGNALS  ##################################################

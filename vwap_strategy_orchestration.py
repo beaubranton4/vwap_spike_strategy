@@ -33,7 +33,7 @@ def main():
         client=client,
         ticker_list=ticker_list,
         combinations=combinations,
-        day_of_backtest=datetime.now(eastern).date()-timedelta(days=3),
+        day_of_backtest=datetime.now(eastern).date()-timedelta(days=0),
         period_type=period_type,
         period=period,
         frequency_type=frequency_type,
