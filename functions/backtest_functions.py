@@ -122,7 +122,7 @@ def buy_sell_signal(signal,
     if(signal == 'Short'): 
         
         #BUY (check that all signals triggered, positioning is neutral, not after hours and we didn't buy it today yet)
-        if ((ok_to_buy == 'True') 
+        if ((ok_to_buy == True) 
             & (time <= buy_time_thresh) 
             & (buy_time_thresh <= sell_time_thresh)
             & (high_price>=target_entry_price) 
@@ -130,8 +130,6 @@ def buy_sell_signal(signal,
             & (after_hours==False) 
             & (BOUGHT_TODAY != date) 
             & (yesterday_high >= premarket_high)):
-            #IF 
-            #print('short',date)
             return 'Short (Target Price Cross)'
         #SELL (check that the position)
         elif (ENTRY_PRICE+(ENTRY_PRICE*stop) <= high_price) & ((POSITION == 'Short') | (POSITION == 'Long')): 
@@ -448,7 +446,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             stockies[ticker]['Close_Condition'] = 'False'
 
             #Checks that all criteria was checked (X days ago) and that we are just waiting for buy signal (price crosses above VWAP)
-            stockies[ticker]['Ok_To_Buy'] = 'False'
+            stockies[ticker]['Ok_To_Buy'] = False
             #Creates the Buy and Sell Signal Column for iteration
             stockies[ticker]['Buy_Sell_Signal'] = 'None'
             #Create target entry price column
@@ -486,10 +484,10 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
            
             signal_rows.to_csv('backtest_results/debugging/signals_rows.csv', index=True, header=True)
 
-            # Create Ok_To_Buy column based on dates in signal_rows
-            # IF the the last trading day (based on row date) is in signal_rows, then make true
-
-            stockies[ticker]['Ok_To_Buy'] = stockies[ticker]['Last_Trading_Day'].isin(signal_rows['Date'])
+            # Ok to buy if signal is found on prior day and close is below VWAP spike. 
+            # Also remove after hours data
+            # COULD Also remove rows where pre-market high surpasses yesterday's high
+            stockies[ticker]['Ok_To_Buy'] = stockies[ticker]['Last_Trading_Day'].isin(signal_rows['Date']) & (stockies[ticker]['After Hours'] == False)
 
             # Create mapping dictionaries from signal_rows for each value we want to map
             target_entry_map = signal_rows.set_index('Date')['VWAP'].to_dict()
@@ -503,24 +501,23 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             price_spike_map = signal_rows.set_index('Date')['Price_Spike_From_Open'].to_dict()
             previous_close = signal_rows.set_index('Date')['Close'].to_dict()
 
-            # Map values to main dataframe, filling NaN with default values
+            # Map values to main dataframe
             stockies[ticker]['Target_Entry_Price'] = stockies[ticker]['Last_Trading_Day'].map(target_entry_map)
             stockies[ticker]['Signal_Time'] = stockies[ticker]['Last_Trading_Day'].map(signal_time_map)
             stockies[ticker]['Volume_Spike'] = stockies[ticker]['Last_Trading_Day'].map(volume_spike_map)
             stockies[ticker]['Price_Spike_From_Open'] = stockies[ticker]['Last_Trading_Day'].map(price_spike_map)
             stockies[ticker]['Previous_Day_Close'] = stockies[ticker]['Last_Trading_Day'].map(previous_close)
-
-            stockies[ticker].to_csv('backtest_results/debugging/stockies_structure_w_buy_sell_signals.csv', index=True, header=True)
-            #Iterate over rows to see which rows meet the close condition and the all clear to buy signal (pending final signal: price cross)
-            #Unique to this strategy's backtest. Could be a part of inserting variables and signals before BACKTEST SECTION
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == True)]
             stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
 
             #If there are no signals - skip to next stock.
-            if len(stockies[ticker][stockies[ticker]['Ok_To_Buy']== 'True']) == 0:
+            if len(stonks) == 0:
+                logger.info(f"No signals found for {ticker}. Skipping 5 buy and sell signal simulation")
                 continue      
+
+            #########################################  Use 5m DATA TO CALCULATE BACKTEST RESULTS ##################################################
             
             stonks_5m = pd.DataFrame()
 
@@ -538,7 +535,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     period=period,
                     frequency_type=frequency_type,
                     frequency=5,
-                    start_time=str(int(pd.Timestamp(date).timestamp())*1000),
+                    start_time=str(int((pd.Timestamp(date) - pd.Timedelta(days=15)).timestamp())*1000),
                     end_time=str(int((pd.Timestamp(date) + pd.Timedelta(days=1)).timestamp())*1000),
                     need_extended_hours_data=need_extended_hours_data,
                     need_previous_close=need_previous_close,
@@ -547,20 +544,22 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                     tickers_per_day=tickers_per_day
                 )
 
-                if five_min_data is not None:
-                    # Join the 5m data with stonks on Ticker and Date
-                    five_min_data['Date'] = five_min_data['Datetime'].dt.date
-                    # Create a unique list of the columns we'll need for merging
-                    daily_values = stonks[[
-                        'Ticker', 'Date', 
-                        'Target_Entry_Price', 'Previous_Day_Close', 
-                        'Volume Spike', 'Price_Spike_From_Open'
-                    ]].drop_duplicates()
-                    # Save daily values to CSV for debugging
-                    daily_values.to_csv(f'./backtest_results/debugging/BACKTEST_DAILY_VALUES_{ticker}.csv', index=True, header=True)
-                    if five_min_data is not None:
-                        merged_data = five_min_data.merge(daily_values, on=['Ticker', 'Date'], how='left')
-                        stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
+                # Join the 5m data with stonks on Ticker and Date
+                five_min_data = five_min_data[five_min_data['Date'] == date]
+
+                # Save five_min_data for debugging
+                # five_min_data.to_csv(f'./backtest_results/debugging/5MIN_DATA_before_join_{ticker}_{date.strftime("%Y-%m-%d")}.csv', index=True, header=True)
+                daily_values = stonks[[
+                    'Ticker', 'Date', 
+                    'Target_Entry_Price', 'Previous_Day_Close', 
+                    'Volume_Spike', 'Price_Spike_From_Open', 'Signal_Time'
+                ]].drop_duplicates()
+                # Save daily values to CSV for debugging
+                daily_values.to_csv(f'./backtest_results/debugging/BACKTEST_DAILY_VALUES_{ticker}.csv', index=True, header=True)
+                
+                merged_data = five_min_data.merge(daily_values, on=['Ticker', 'Date'], how='left')
+                stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
+                stonks_5m['Ok_To_Buy'] = True
 
             # Save stonks_5m to a CSV file
             stonks_5m.to_csv('./backtest_results/debugging/5m_test.csv', index=False, header=True)
@@ -569,10 +568,13 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         #########################################  BACKTEST IMPLEMENTATION AND SIMULATION OF BUY AND SELL SIGNALS  ##################################################
             
             POSITION = 'Neutral'
+            BOUGHT_TODAY = stockies[ticker]['Date'][0] - timedelta(days=1)
+            ENTRY_PRICE = 0.0 
+            ENTRY_TIME = stockies[ticker]['Time'][0]
             
             #USING IN-HOUSE FUNCTION SIMULATE (ITERATING THROUGH DAYS, BUYING AND SELLING BASED ON SIGNALS)
             #Iterate over rows to fill in results table with buy and sell actions
-            for index, row in stonks.iterrows():    
+            for index, row in stonks_5m.iterrows():    
                 signal = buy_sell_signal('Short',
                                         row['Ok_To_Buy'],
                                         row['Time'],
@@ -600,7 +602,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                         row['Time'],
                         row['Volume'],
                         row['Previous_Day_Close'],
-                        row['Volume Spike'],
+                        row['Volume_Spike'],
                         row['Price_Spike_From_Open'],
                         row['Target_Entry_Price'],
                         position_size,
@@ -634,7 +636,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                         row['Time'],
                         row['Volume'],
                         row['Previous_Day_Close'],
-                        row['Volume Spike'],
+                        row['Volume_Spike'],
                         row['Price_Spike_From_Open'],
                         row['Target_Entry_Price'],
                         position_size,
@@ -736,7 +738,8 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
             retry_delay=1
         )
 
-        # print(stock_data)
+        # Save open_close_schedule to CSV for debugging
+        open_close_schedule.to_csv('backtest_results/debugging/open_close_schedule.csv', index=True, header=True)
         
         if not stock_data or 'candles' not in stock_data:
             logger.info(f"No data available for {ticker}")
@@ -773,6 +776,12 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         stahks['Ticker'] = ticker
         stahks['Date'] = stahks['Datetime'].dt.date
         stahks = stahks.merge(open_close_schedule, how='left', on='Date')
+
+        # Update market_close based on candle length if using 5m bars
+        if frequency == 5:
+            stahks['market_close'] = pd.to_datetime(stahks['Date'].astype(str) + ' ' + stahks['market_close'].astype(str)) + pd.Timedelta(minutes=25)
+            stahks['market_close'] = stahks['market_close'].dt.time
+        
         
         # Calculate volume metrics
         stahks['10_Day_Avg_Vol'] = stahks.Volume.rolling(int(rolling_lookback), min_periods=int(rolling_lookback)).mean()
@@ -783,6 +792,7 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         stahks.drop_duplicates(['Ticker','Date','Time'], inplace=True, ignore_index=True)
         
         if len(stahks.index) < (days * tickers_per_day):
+            logger.info(f"Not enough data for {ticker} - skipping...")
             return None
             
         # Calculate additional metrics
