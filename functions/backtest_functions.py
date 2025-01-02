@@ -281,7 +281,8 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     
     global ENTRY_PRICE, POSITION, ENTRY_TIME, ACCOUNT_SIZE, BUYS, RESULT_INDEXER, BOUGHT_TODAY
     global TEMP_SIGNAL_DAY, OK_TO_BUY_DAY, TARGET_ENTRY_PRICE, SIGNAL_TIME
-    global VOLUME_SPIKE, PRICE_SPIKE_TEMP, OPTIMAL_ENTRY_TIME, OPTIMAL_EXIT_TIME
+    global VOLUME_SPIKE, PRICE_SPIKE, OPTIMAL_ENTRY_TIME, OPTIMAL_EXIT_TIME
+    global PREVIOUS_VOLUME_SPIKE, PREVIOUS_PRICE_SPIKE, PREVIOUS_TARGET_ENTRY_PRICE, PREVIOUS_SIGNAL_TIME
     global PREVIOUS_DAY_CLOSE, RESULT_INDEXER
     global ACCOUNT_SIZE
     global results, inputs, signal
@@ -367,12 +368,16 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 open_close_schedule=open_close_schedule,
                 tickers_per_day=tickers_per_day
             )
-
-            stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
-            # print(f"{ticker} processed successfully.")
+            
+            if stahks is not None:
+                stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
+                # print(f"{ticker} processed successfully.")
+            else:
+                logger.error(f"Error processing {ticker} line 376")
+                continue
             
         except Exception as e:
-            logger.error(f"Error processing {ticker}: {str(e)}")
+            logger.error(f"1 - Error processing {ticker}: {str(e)}")
             logger.error(traceback.format_exc())
             continue
 
@@ -448,67 +453,63 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             stockies[ticker]['Buy_Sell_Signal'] = 'None'
             #Create target entry price column
             stockies[ticker]['Target_Entry_Price'] = 100000.0
-
-            #Temp Variables for backtest (row by row iteration)
-            #Create temporary signal day variable that signaled whether or not the price_to_buy_signal was triggered during that day
-            TEMP_SIGNAL_DAY = stockies[ticker]['Date'][0] - timedelta(days=1)
-            #Create temporary ok to buy day variable that will trigger if the close condition for the day was satisfied (which only triggers if grab_price_signal is triggered)
-            OK_TO_BUY_DAY = stockies[ticker]['Date'][0] - timedelta(days=365)
-            #Initially set not to trigger and gets set on price_buy_signal
-            TARGET_ENTRY_PRICE = 0.0 
-            ENTRY_PRICE = 0.0 
-            ENTRY_TIME = stockies[ticker]['Time'][0]
-            BOUGHT_TODAY = stockies[ticker]['Date'][0] - timedelta(days=1)
-            PREVIOUS_DAY_CLOSE = 0.0
-            SIGNAL_TIME = stockies[ticker]['Time'][0]
-            OPTIMAL_ENTRY = 0.0
-            OPTIMAL_EXIT = 0.0
-            VOLUME_SPIKE = 0.0
-            PRICE_SPIKE_TEMP = 0.0
-
-            OPTIMAL_ENTRY_TIME = 0.0
-            OPTIMAL_EXIT_TIME = 0.0
-
-            POSITION = 'Neutral'
-
+            
             # Save stockies to see its structure 
             stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
 
+            ####CREATE BUY AND SELL SIGNALS IN DATA FRAME BASED ON STRATEGY PARAMETERS
+
+            # Create a dataframe of rows where Grab_Price_Signal is True
+            signal_rows = stockies[ticker][stockies[ticker]['Grab_Price_Signal'] == 'True'].copy()
+            # For each date, keep only the row with the latest time
+            signal_rows = signal_rows.sort_values('Time').groupby('Date').last().reset_index()
+            # Get distinct dates from signal_rows
+            signal_dates = signal_rows['Date'].unique()
+            
+            # Create dataframe of closing prices on signal days
+            valid_signals = stockies[ticker][
+                (stockies[ticker]['Date'].isin(signal_dates)) & 
+                (stockies[ticker]['Day_Close'] == True)
+            ].copy()
+
+            # Join signal_rows with valid_signals on Date
+            signal_rows = signal_rows.merge(valid_signals[['Date', 'Close']], 
+                                         on='Date', 
+                                         how='inner',
+                                         suffixes=('', '_eod'))
+            
+            # Filter for rows where closing price is below VWAP
+            signal_rows = signal_rows[signal_rows['Close_eod'] < signal_rows['VWAP']]
+           
+            signal_rows.to_csv('backtest_results/debugging/signals_rows.csv', index=True, header=True)
+
+            # Create Ok_To_Buy column based on dates in signal_rows
+            # IF the the last trading day (based on row date) is in signal_rows, then make true
+            
+            stockies[ticker]['Ok_To_Buy'] = stockies[ticker]['Last_Trading_Day'].isin(signal_rows['Date'])
+
+            # # Create mapping dictionaries from signal_rows for each value we want to map
+            # target_entry_map = signal_rows.set_index('Date')['VWAP'].to_dict()
+            # signal_time_map = signal_rows.set_index('Date')['Time'].to_dict()
+            
+            # # Calculate Volume Spike and Price Spike in signal_rows
+            # signal_rows['Volume_Spike'] = signal_rows['Volume'] / signal_rows['10_Day_Avg_Vol']
+            # signal_rows['Price_Spike_From_Open'] = (signal_rows['High'] - signal_rows['Day_Open_Low']) / signal_rows['Day_Open_Low']
+            
+            # volume_spike_map = signal_rows.set_index('Date')['Volume_Spike'].to_dict()
+            # price_spike_map = signal_rows.set_index('Date')['Price_Spike_From_Open'].to_dict()
+            # previous_close = signal_rows.set_index('Date')['Close'].to_dict()
+
+            # # Map values to main dataframe, filling NaN with default values
+            # stockies[ticker]['Target_Entry_Price'] = stockies[ticker]['Date'].map(target_entry_map)
+            # stockies[ticker]['Signal_Time'] = stockies[ticker]['Date'].map(signal_time_map)
+            # stockies[ticker]['Volume_Spike'] = stockies[ticker]['Date'].map(volume_spike_map)
+            # stockies[ticker]['Price_Spike_From_Open'] = stockies[ticker]['Date'].map(price_spike_map)
+            # stockies[ticker]['Previous_Day_Close'] = stockies[ticker]['Date'].map(previous_close)
+
+            stockies[ticker].to_csv('backtest_results/debugging/stockies_structure_w_buy_sell_signals.csv', index=True, header=True)
             #Iterate over rows to see which rows meet the close condition and the all clear to buy signal (pending final signal: price cross)
             #Unique to this strategy's backtest. Could be a part of inserting variables and signals before BACKTEST SECTION
-
-            for index, row in stockies[ticker].iterrows():
-
-                if row['Grab_Price_Signal'] == 'True':
-                    # print(f"Found signal: {row['Date']}")
-                    TEMP_SIGNAL_DAY = row['Date']
-                    TARGET_ENTRY_PRICE = row['VWAP']
-                    SIGNAL_TIME = row['Time']
-                    VOLUME_SPIKE = row['Volume']/row['10_Day_Avg_Vol']
-                    PRICE_SPIKE = (row['High']-row['Day_Open_Low'])/row['Day_Open_Low']
-
-                # Store previous OK_TO_BUY_DAY before potentially updating it
-                previous_ok_to_buy = OK_TO_BUY_DAY
-
-                if (row['Close']<=TARGET_ENTRY_PRICE) & (row['Day_Close'] == True) & (row['Date'] == TEMP_SIGNAL_DAY):
-                    # print(f"Setting Close_Condition: Close={row['Close']}, TARGET={TARGET_ENTRY_PRICE}, Date={row['Date']}")
-                    stockies[ticker].at[index,'Close_Condition'] = 'True'
-                    OK_TO_BUY_DAY = next_business_day(row['Date'])
-                    SIGNALS += 1
-                    PREVIOUS_DAY_CLOSE = row['Close']
-                    logger.info(f"Signal found for {ticker} on {row['Date']}")
-
-                # Check both current and previous OK_TO_BUY_DAY (for edge case of back to back days with signal)
-                if (OK_TO_BUY_DAY == row['Date']) or (previous_ok_to_buy == row['Date']):
-                    # print(f"Setting Ok_To_Buy for date: {row['Date']}")
-                    stockies[ticker].at[index,'Ok_To_Buy'] = 'True' 
-                    stockies[ticker].at[index,'Previous_Day_Close'] = PREVIOUS_DAY_CLOSE
-                    stockies[ticker].at[index,'Signal Time'] = SIGNAL_TIME
-                    stockies[ticker].at[index,'Volume Spike'] = VOLUME_SPIKE
-                    stockies[ticker].at[index,'Price_Spike_From_Open'] = PRICE_SPIKE
-                    stockies[ticker].at[index,'Target_Entry_Price'] = TARGET_ENTRY_PRICE
-
-            # stockies[ticker].to_csv(f'backtest_results/debugging/stockies_{ticker}.csv', index=False, header=True)
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]
@@ -712,7 +713,8 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
     """
     Process stock price history data and return formatted DataFrame
     """
-    logger = logging.getLogger(__name__)
+    # Use 'main' logger instead of creating a new one
+    logger = logging.getLogger('main')
     
     try:
         # Get stock price history
@@ -730,6 +732,8 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
             max_retries=3,
             retry_delay=1
         )
+
+        # print(stock_data)
         
         if not stock_data or 'candles' not in stock_data:
             logger.info(f"No data available for {ticker}")
@@ -742,6 +746,7 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
             logger.info(f"Missing required fields for {ticker}")
             return None
             
+        logger.info(f"Processing data for {ticker}")
         # Format DataFrame
         stahks.rename(columns={
             'datetime': 'Datetime',
@@ -790,7 +795,10 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         # Map back to original DataFrame
         stahks['Yesterday High'] = stahks['Date'].map(yesterday_highs)
         
-        # Fill missing values
+        # Fill missing values with explicit downcasting handling
+        # pd.set_option('future.no_silent_downcasting', True)  # Optional: opt-in to future behavior
+        # stahks = stahks.ffill(axis=0)
+        # stahks = stahks.bfill(axis=0)
         stahks = stahks.ffill(axis=0).bfill(axis=0)
         
         # Calculate VWAP
@@ -798,6 +806,7 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         stahks['VWAP'] = stahks.groupby('Date')['VWAP_Row'].transform('cumsum') / stahks.groupby('Date')['Volume'].transform('cumsum')
         stahks['Day_Close'] = (stahks['Time'] == stahks['market_close'])
         
+        logger.info(f"Successfully processed {ticker} data")
         return stahks
         
     except Exception as e:

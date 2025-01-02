@@ -25,6 +25,7 @@ def main():
     
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
+    last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
     # print(datetime.now(eastern).date())
     ############STEP 1: RUN DAILY SCREENER (5pm ET)####################
 
@@ -33,7 +34,7 @@ def main():
         client=client,
         ticker_list=ticker_list,
         combinations=combinations,
-        day_of_backtest=datetime.now(eastern).date()-timedelta(days=0),
+        day_of_backtest=last_market_day,
         period_type=period_type,
         period=period,
         frequency_type=frequency_type,
@@ -73,6 +74,18 @@ def main():
     # strategy = ExecuteStrategy(use_mock_data=False)
     # strategy.execute_vwap_spike_strategy(screener_results)
     
+     # Get yesterday's results
+    # save_dir = Path('screener/daily_screener_signals')
+    today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
+    
+    # Load screener results
+    screener_file = f'screener/daily_screener_signals/{today}.csv'
+        
+    screener_results = pd.read_csv(screener_file)
+    
+    # Run pre-market checks
+    client = get_authenticated_client()  # Your existing function
+    filtered_results = run_premarket_screener(client, screener_results)
     
 if __name__ == "__main__":
     main()

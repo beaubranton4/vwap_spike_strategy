@@ -143,7 +143,6 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         # Process current chunk of tickers
         for ticker in current_tickers:
             try:
-                
                 stahks = process_stock_data(
                     client=client,
                     ticker=ticker,
@@ -160,9 +159,12 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                     tickers_per_day=tickers_per_day
                 )
 
-                stockies[ticker] = pd.DataFrame(stahks, columns=stahks.keys())
-                # print(f"{ticker} processed successfully.")
-                
+                if stahks is not None:
+                    stockies[ticker] = stahks  
+                    logger.info(f"{ticker} processed successfully.")
+                else:
+                    logger.info(f"Skipping {ticker} - no valid data returned")
+                    
             except Exception as e:
                 logger.error(f"Error processing {ticker}: {str(e)}")
                 continue
@@ -235,6 +237,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                         stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                         stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
                         # stocks_to_trade.at[RESULT_INDEXER,'Shares'] = int(500/TARGET_ENTRY_PRICE)
+                        stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = row['Yesterday High']
                         stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]                 

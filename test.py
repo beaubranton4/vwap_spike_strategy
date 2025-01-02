@@ -121,7 +121,7 @@ def main():
     client = get_authenticated_client()
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
-    # print(account_balance)
+    print(account_balance)
     # last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
     # print(last_market_day)
     # stock_data = get_price_history_with_schwabdev(

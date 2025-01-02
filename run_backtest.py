@@ -37,8 +37,9 @@ def main():
     client = get_authenticated_client()
     # get_todays_trades(client)
     account_balance = get_account_balance(client)
-
-    end_backtest_date = datetime.now() 
+    print(account_balance)
+    eastern_tz = pytz.timezone('US/Eastern')
+    end_backtest_date = datetime.now(eastern_tz)
     start_backtest_date = end_backtest_date - timedelta(days=365)
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
