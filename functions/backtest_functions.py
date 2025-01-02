@@ -453,6 +453,9 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             stockies[ticker]['Buy_Sell_Signal'] = 'None'
             #Create target entry price column
             stockies[ticker]['Target_Entry_Price'] = 100000.0
+
+            # Create Last_Trading_Day column by applying last_trading_day function to each Date
+         
             
             # Save stockies to see its structure 
             stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
@@ -485,34 +488,34 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
 
             # Create Ok_To_Buy column based on dates in signal_rows
             # IF the the last trading day (based on row date) is in signal_rows, then make true
-            
+
             stockies[ticker]['Ok_To_Buy'] = stockies[ticker]['Last_Trading_Day'].isin(signal_rows['Date'])
 
-            # # Create mapping dictionaries from signal_rows for each value we want to map
-            # target_entry_map = signal_rows.set_index('Date')['VWAP'].to_dict()
-            # signal_time_map = signal_rows.set_index('Date')['Time'].to_dict()
+            # Create mapping dictionaries from signal_rows for each value we want to map
+            target_entry_map = signal_rows.set_index('Date')['VWAP'].to_dict()
+            signal_time_map = signal_rows.set_index('Date')['Time'].to_dict()
             
-            # # Calculate Volume Spike and Price Spike in signal_rows
-            # signal_rows['Volume_Spike'] = signal_rows['Volume'] / signal_rows['10_Day_Avg_Vol']
-            # signal_rows['Price_Spike_From_Open'] = (signal_rows['High'] - signal_rows['Day_Open_Low']) / signal_rows['Day_Open_Low']
+            # Calculate Volume Spike and Price Spike in signal_rows
+            signal_rows['Volume_Spike'] = signal_rows['Volume'] / signal_rows['10_Day_Avg_Vol']
+            signal_rows['Price_Spike_From_Open'] = (signal_rows['High'] - signal_rows['Day_Open_Low']) / signal_rows['Day_Open_Low']
             
-            # volume_spike_map = signal_rows.set_index('Date')['Volume_Spike'].to_dict()
-            # price_spike_map = signal_rows.set_index('Date')['Price_Spike_From_Open'].to_dict()
-            # previous_close = signal_rows.set_index('Date')['Close'].to_dict()
+            volume_spike_map = signal_rows.set_index('Date')['Volume_Spike'].to_dict()
+            price_spike_map = signal_rows.set_index('Date')['Price_Spike_From_Open'].to_dict()
+            previous_close = signal_rows.set_index('Date')['Close'].to_dict()
 
-            # # Map values to main dataframe, filling NaN with default values
-            # stockies[ticker]['Target_Entry_Price'] = stockies[ticker]['Date'].map(target_entry_map)
-            # stockies[ticker]['Signal_Time'] = stockies[ticker]['Date'].map(signal_time_map)
-            # stockies[ticker]['Volume_Spike'] = stockies[ticker]['Date'].map(volume_spike_map)
-            # stockies[ticker]['Price_Spike_From_Open'] = stockies[ticker]['Date'].map(price_spike_map)
-            # stockies[ticker]['Previous_Day_Close'] = stockies[ticker]['Date'].map(previous_close)
+            # Map values to main dataframe, filling NaN with default values
+            stockies[ticker]['Target_Entry_Price'] = stockies[ticker]['Last_Trading_Day'].map(target_entry_map)
+            stockies[ticker]['Signal_Time'] = stockies[ticker]['Last_Trading_Day'].map(signal_time_map)
+            stockies[ticker]['Volume_Spike'] = stockies[ticker]['Last_Trading_Day'].map(volume_spike_map)
+            stockies[ticker]['Price_Spike_From_Open'] = stockies[ticker]['Last_Trading_Day'].map(price_spike_map)
+            stockies[ticker]['Previous_Day_Close'] = stockies[ticker]['Last_Trading_Day'].map(previous_close)
 
             stockies[ticker].to_csv('backtest_results/debugging/stockies_structure_w_buy_sell_signals.csv', index=True, header=True)
             #Iterate over rows to see which rows meet the close condition and the all clear to buy signal (pending final signal: price cross)
             #Unique to this strategy's backtest. Could be a part of inserting variables and signals before BACKTEST SECTION
             
             #Consolidate tables to only days where we might buy and sell
-            stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == 'True')]
+            stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == True)]
             stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
 
             #If there are no signals - skip to next stock.
@@ -791,9 +794,12 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         # Get daily highs and shift by one trading day
         daily_highs = stahks.groupby('Date')['high_of_day'].max()
         yesterday_highs = daily_highs.shift(1)
+        all_dates = stahks.groupby('Date')['Date'].max()
+        last_trading_day = all_dates.shift(1)   
         
         # Map back to original DataFrame
         stahks['Yesterday High'] = stahks['Date'].map(yesterday_highs)
+        stahks['Last_Trading_Day'] = stahks['Date'].map(last_trading_day)
         
         # Fill missing values with explicit downcasting handling
         # pd.set_option('future.no_silent_downcasting', True)  # Optional: opt-in to future behavior
