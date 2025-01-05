@@ -1,7 +1,6 @@
 
--- Run Backtest again and see how it compares to performance of actual trading
--- Update backtest so that we aren't buying and selling at the same time just based off of high and low prices. the high must occur before the low. (Might be end of strategy)
--- Figure out why so many stocks are being skipped in screener and not returning data from Schwab API
+
+-- Figure out why so many stocks are being skipped in screener and not returning sufficient amount of data from Schwab API
 --------------------------------------------------------------------------------------------------
 
 -- Figure out why screener didn't run properly on 12/26/2024 ET
@@ -35,9 +34,8 @@
 --------------------------------------------------------------------------------------------------
 
 -- Analyze what percentage of pre-market screener stocks are actually shorted.
+-- Maybe we can remove the pre-market high criteria and see how well that performs in the backtest.
 
-    ------------------------------------------------------------------------------------------------------
-    - Logging for end of day close. why didn't PYPL close the short?
 
 -----------------------------------------------------------------------------------------------------
    

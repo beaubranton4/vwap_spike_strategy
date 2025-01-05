@@ -26,6 +26,10 @@ def main():
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
     last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
+    today = datetime.now(eastern).date()-timedelta(days=1)
+                 
+
+
     # print(datetime.now(eastern).date())
     ############STEP 1: RUN DAILY SCREENER (5pm ET)####################
 
@@ -34,7 +38,7 @@ def main():
         client=client,
         ticker_list=ticker_list,
         combinations=combinations,
-        day_of_backtest=last_market_day,
+        day_of_backtest=today,
         period_type=period_type,
         period=period,
         frequency_type=frequency_type,
@@ -84,8 +88,8 @@ def main():
     screener_results = pd.read_csv(screener_file)
     
     # Run pre-market checks
-    client = get_authenticated_client()  # Your existing function
-    filtered_results = run_premarket_screener(client, screener_results)
+    # client = get_authenticated_client()  # Your existing function
+    # filtered_results = run_premarket_screener(client, screener_results)
     
 if __name__ == "__main__":
     main()
