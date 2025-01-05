@@ -3,8 +3,7 @@
 -- Figure out why so many stocks are being skipped in screener and not returning sufficient amount of data from Schwab API
 --------------------------------------------------------------------------------------------------
 
--- Figure out why screener didn't run properly on 12/26/2024 ET
-    -- 12/24 was a half day...
+-- Error thrown in close_all_open_orders function
 
 --------------------------------------------------------------------------------------------------
 
@@ -19,8 +18,6 @@
     code: 'ENOENT',
     syscall: 'connect',
     address: '/run/user/1000/vscode-ipc-7bd35661-5e12-4f1d-b24f-43b6a2bbe074.sock'
---------------------------------------------------------------------------------------------------
--- Error thrown in close_all_open_orders function
 
 --------------------------------------------------------------------------------------------------
 -- Refresh ticker list (automatically)

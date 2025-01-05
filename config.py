@@ -43,13 +43,15 @@ ALLOCATION = 0.1
 
 BET_SIZE = [ALLOCATION]  # FIXED
 STOP = [0.1]  # FIXED # Removed .05
-TARGET = [0.05]  # FIXED
+TARGET = [0.1]  # FIXED
 
 VOL_SPIKE_THRESHOLD = [5]  # Abnormally high volume that stands out on a chart
 PRICE_SPIKE_THRESHOLD = [0.05]  # Must move the price x%
 TIME_SIG_THRESHOLD = [time(hour=12, minute=30, second=0)]
-BUY_TIME_THRESHOLD = [time(hour=10, minute=30, second=0)]
-SELL_TIME_THRESHOLD = [time(hour=15, minute=55, second=0)]
+
+#BUY AND SELL RESULTS BASED ON 5m Candles so we can add 5 minutes to these times to determine real times
+BUY_TIME_THRESHOLD = [time(hour=9, minute=30, second=0)]
+SELL_TIME_THRESHOLD = [time(hour=9, minute=40, second=0)]
 
 ####################################### CREATE VARIABLES FOR INPUT STRATEGY TO TEST ##########################
 bet_size_index = 0

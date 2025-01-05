@@ -494,11 +494,11 @@ def get_market_times(market_schedule, today):
     times = {
         'schedule_refresh': "00:05:00",
         'screener': "00:10:00",
-        'premarket': "09:29:30",
+        'premarket': "09:29:40",
         'market_open': "09:30:00",
-        'close_open_short_orders': "10:31:00",
-        'market_close': "15:59:00",
-        'trade_analysis': "16:30:00"
+        'close_open_short_orders': "09:35:05",
+        'sell_time': "09:45:00",
+        'trade_analysis': "09:46:00"
     }
     
     if not market_schedule.empty:
@@ -508,9 +508,8 @@ def get_market_times(market_schedule, today):
             market_close = today_schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
             
             times.update({
-                'premarket': (market_open - timedelta(seconds=30)).strftime("%H:%M:%S"),
-                'market_open': market_open.strftime("%H:%M:%S"),
-                'market_close': (market_close - timedelta(minutes=1)).strftime("%H:%M:%S")
+                'premarket': (market_open - timedelta(seconds=20)).strftime("%H:%M:%S"),
+                'market_open': market_open.strftime("%H:%M:%S")
             })
     return times
 
@@ -522,7 +521,7 @@ def schedule_daily_jobs(times):
         (times['premarket'], schedule_premarket_screener),
         (times['market_open'], run_trading_strategy),
         (times['close_open_short_orders'], close_open_orders_at_buy_time_threshold),
-        (times['market_close'], close_end_of_day_positions),
+        (times['sell_time'], close_end_of_day_positions),
         (times['trade_analysis'], run_trade_analysis)
     ]
     

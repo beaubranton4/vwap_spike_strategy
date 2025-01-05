@@ -198,59 +198,16 @@ class ExecuteStrategy:
             raise
 
     def _get_strategy_end_time(self) -> datetime:
-        """Calculate strategy end time based on market close and configured threshold - take earlier of strategy end and market close"""
-        try:
-            # Get NYSE schedule
-            nyse = mcal.get_calendar('NYSE')
+        """Get default strategy end time"""
+        # Use simulated time if mock data is enabled
+        if self.use_mock_data and hasattr(self, 'streamer'):
+            now = self.streamer.get_current_time()
+        else:
+            now = datetime.now(self.et_timezone)
             
-            # Use simulated time if mock data is enabled
-            if self.use_mock_data and hasattr(self, 'streamer'):
-                today = self.streamer.get_current_time().date()
-            else:
-                today = datetime.now().date()
-                
-            schedule = pd.DataFrame(nyse.schedule(start_date=today, end_date=today))
-            
-            if len(schedule) == 0:
-                raise ValueError("No market schedule found for today")
-            
-            # Get market close time
-            market_close = schedule.iloc[0]['market_close'].tz_convert('US/Eastern')
-            
-            # Get the time from the SELL_TIME_THRESHOLD list
-            sell_time = market_close # Get first (and presumably only) time object from list
-                
-            # Get strategy cutoff time using appropriate time source
-            if self.use_mock_data and hasattr(self, 'streamer'):
-                now = self.streamer.get_current_time()
-            else:
-                now = datetime.now(self.et_timezone)
-                
-            strategy_cutoff = now.replace(
-                hour=sell_time.hour,
-                minute=sell_time.minute,
-                second=0,
-                microsecond=0
-            )
-            
-            # Use earlier of market close or cutoff
-            # strategy_end = min(market_close, strategy_cutoff)
-            strategy_end = strategy_cutoff
-            
-            self.logger.info(f"Market closes at: {market_close.strftime('%H:%M:%S')} ET")
-            self.logger.info(f"Strategy ends at: {strategy_end.strftime('%H:%M:%S')} ET")
-            return strategy_end
-            
-        except Exception as e:
-            self.logger.error(f"Error getting strategy end time: {e}")
-            # Default to 4:00 PM ET using appropriate time source
-            if self.use_mock_data and hasattr(self, 'streamer'):
-                now = self.streamer.get_current_time()
-            else:
-                now = datetime.now(self.et_timezone)
-            default_close = now.replace(hour=16, minute=0, second=0, microsecond=0)
-            self.logger.warning(f"Using default end time: {default_close.strftime('%H:%M:%S')} ET")
-            return default_close
+        default_close = now.replace(hour=9, minute=45, second=0, microsecond=0)
+        self.logger.info(f"Using default strategy end time: {default_close.strftime('%H:%M:%S')} ET")
+        return default_close
 
     def _get_market_open_time(self) -> datetime:
         """Get market open time from NYSE calendar"""
@@ -357,8 +314,7 @@ class ExecuteStrategy:
                                     
                                     # Check if we're in valid trading hours and prior to buy time threshold
                                     market_hours = (
-                                        self.market_open_time.time() <= current_time.time() <= self.strategy_end_time.time() and
-                                        current_time.time() < BUY_TIME_THRESHOLD[0]
+                                        self.market_open_time.time() <= current_time.time() <= self.strategy_end_time.time() 
                                     )
                                     
                                     if market_hours:
