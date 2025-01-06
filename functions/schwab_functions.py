@@ -749,24 +749,43 @@ def close_all_open_orders(client, account_hash, from_time, to_time, position_typ
         orders = response.json()
         logger.info(f"Found {len(orders)} total orders to process")
         
-        # Create DataFrame of working orders
-        parsed_orders = [{
-            'OrderId': order['orderId'],
-            'Status': order['status'],
-            'Symbol': order['orderLegCollection'][0]['instrument']['symbol'],
-            'Instruction': order['orderLegCollection'][0]['instruction']
-        } for order in orders]
+        parsed_orders = []
+        for order in orders:
+            # Handle regular orders
+            if 'orderLegCollection' in order:
+                parsed_orders.append({
+                    'OrderId': order['orderId'],
+                    'Status': order['status'],
+                    'Symbol': order['orderLegCollection'][0]['instrument']['symbol'],
+                    'Instruction': order['orderLegCollection'][0]['instruction']
+                })
+            # Handle OCO orders
+            elif 'childOrderStrategies' in order:
+                for child_order in order['childOrderStrategies']:
+                    if 'orderLegCollection' in child_order:
+                        parsed_orders.append({
+                            'OrderId': child_order['orderId'],
+                            'Status': child_order['status'],
+                            'Symbol': child_order['orderLegCollection'][0]['instrument']['symbol'],
+                            'Instruction': child_order['orderLegCollection'][0]['instruction']
+                        })
         
         df = pd.DataFrame(parsed_orders)
         logger.info(f"Parsed orders DataFrame:\n{df}")
         
+        if df.empty:
+            logger.info("No orders found to cancel")
+            return
+            
         # Filter and cancel working orders
         working_orders = df[(df['Status'] == 'WORKING') & (df['Instruction'] == position_type)]
         logger.info(f"Found {len(working_orders)} {position_type} orders to cancel")
         
         for order_id in working_orders['OrderId']:
             cancel_response = client.order_cancel(account_hash, order_id)
-            logger.info(f"{'Successfully cancelled order ' + str(order_id) if cancel_response.status_code == 200 else f'Failed to cancel order {order_id}'}")
+            logger.info(
+                f"{'Successfully cancelled order ' + str(order_id) if cancel_response.status_code == 200 else f'Failed to cancel order {order_id}'}"
+            )
                 
     except Exception as e:
         logger.error(f"Error in close_all_open_orders: {str(e)}")

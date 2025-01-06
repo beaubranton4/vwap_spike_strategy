@@ -119,8 +119,17 @@ def main():
 
     
     client = get_authenticated_client()
+    linked_accounts_response = client.account_linked()
+    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    
+    # Set time range to last 24 hours
+    to_time = datetime.now()
+    from_time = to_time - timedelta(days=10)
+    
+    # Close all open SELL_SHORT orders
+    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
     # get_todays_trades(client)
-    account_balance = get_account_balance(client)
+    # account_balance = get_account_balance(client)
     # get_todays_trades(client)
     # last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
     # print(last_market_day)

@@ -19,9 +19,13 @@
     syscall: 'connect',
     address: '/run/user/1000/vscode-ipc-7bd35661-5e12-4f1d-b24f-43b6a2bbe074.sock'
 
---------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+-- Auto start and stop EC2 instance
+-------------------------------------------------------------------------------------------------
+
 -- Refresh ticker list (automatically)
---------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------
 -- Join peformance csv with screener to get info on what stocks performed well.
 -- Add cumulative performance to screener
 -- Add cash balance to performance csv (once we close the long positions)
