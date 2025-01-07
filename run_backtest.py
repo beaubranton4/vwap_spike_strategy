@@ -40,7 +40,7 @@ def main():
     print(account_balance)
     eastern_tz = pytz.timezone('US/Eastern')
     end_backtest_date = datetime.now(eastern_tz)
-    start_backtest_date = end_backtest_date - timedelta(days=365)
+    start_backtest_date = end_backtest_date - timedelta(days=20)
     start_backtest_time = str(int(start_backtest_date.timestamp())*1000)
     end_backtest_time = str(int(end_backtest_date.timestamp())*1000)
 
@@ -55,11 +55,11 @@ def main():
     # EXIT_TIME_LIMIT = [time(hour=15, minute=30, second=0)]
 
     PERCENT_ALLOCATION = [0.1]  # FIXED
-    STOP_LOSS_PERCENT = [0.1, 0.05, 1]  # FIXED # Removed .05
-    PROFIT_TARGET_PERCENT = [0.05, 0.1, 1]  # FIXED
+    STOP_LOSS_PERCENT = [0.1]  # FIXED # Removed .05
+    PROFIT_TARGET_PERCENT = [ 0.1]  # FIXED
 
-    VOLUME_SPIKE_SIGNAL = [5,10]  # Abnormally high volume that stands out on a chart
-    PRICE_SPIKE_SIGNAL = [0.05, 0.1]  # Must move the price x%
+    VOLUME_SPIKE_SIGNAL = [5]  # Abnormally high volume that stands out on a chart
+    PRICE_SPIKE_SIGNAL = [0.05]  # Must move the price x%
     SPIKE_TIME_LIMIT = [time(hour=12, minute=30, second=0)]
     ENTRY_TIME_LIMIT = [time(hour=9, minute=30, second=0)]
     EXIT_TIME_LIMIT = [time(hour=9, minute=40, second=0)]
@@ -77,7 +77,7 @@ def main():
     variables = [PERCENT_ALLOCATION, STOP_LOSS_PERCENT, PROFIT_TARGET_PERCENT, VOLUME_SPIKE_SIGNAL, PRICE_SPIKE_SIGNAL, SPIKE_TIME_LIMIT, ENTRY_TIME_LIMIT, EXIT_TIME_LIMIT]
     strategy_variations = list(itertools.product(*variables))   
 
-    strategy_note_input = '01_05_2025'
+    strategy_note_input = '01_07_2025'
     
     run_vwap_spike_screener_backtest(client, ticker_list, strategy_variations, 
                             period_type, period, frequency_type, frequency,

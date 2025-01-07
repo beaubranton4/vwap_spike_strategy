@@ -364,7 +364,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    # all_tickers = ['QBTS','AKTS']
+    all_tickers = ['ZCAR','PTON']
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
@@ -607,7 +607,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
                 stonks_5m['Ok_To_Buy'] = True
 
-                # stonks_5m.to_csv(f'./backtest_results/debugging/5m_test_post_{ticker}_{date.strftime("%Y-%m-%d")}.csv', index=False, header=True)
+                stonks_5m.to_csv(f'./backtest_results/debugging/5m_test_post_{ticker}_{date.strftime("%Y-%m-%d")}.csv', index=False, header=True)
             # Save stonks_5m to a CSV file
             # stonks_5m.to_csv('./backtest_results/debugging/5m_test.csv', index=False, header=True)
             # THIS IS WHERE I CAN BRING IN 5m bars, join to stonks and use it to calculate results

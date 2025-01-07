@@ -237,7 +237,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
                         stocks_to_trade.at[RESULT_INDEXER,'Volume Spike'] = VOLUME_SPIKE
                         stocks_to_trade.at[RESULT_INDEXER,'Price Spike'] = PRICE_SPIKE
                         # stocks_to_trade.at[RESULT_INDEXER,'Shares'] = int(500/TARGET_ENTRY_PRICE)
-                        stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = row['Yesterday High']
+                        stocks_to_trade.at[RESULT_INDEXER,'Yesterday High'] = row['high_of_day']
                         stocks_to_trade.at[RESULT_INDEXER,'Time Threshold'] = strategy[time_sig_thresh_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Buy Time Threshold'] = strategy[buy_time_threshold_index]
                         stocks_to_trade.at[RESULT_INDEXER,'Sell_Time'] = strategy[sell_time_threshold_index]                 
@@ -379,10 +379,10 @@ def calculate_shares(client, df, allocation):
         
         # Calculate the two limits
         allocation_limit = cash_balance * allocation
-        equal_distribution = cash_balance / len(df)  
+        equal_distribution = min(cash_balance / len(df), cash_balance * 0.2)
         
         # Take the smaller of the two limits
-        position_size = max(allocation_limit, equal_distribution) #At least 10% Allocation
+        position_size = max(allocation_limit, equal_distribution) #At least 10% Allocation, max 20% allocation if less than 5 stocks on watchlist
         # position_size = allocation_limit
         
         # Calculate shares for each row
