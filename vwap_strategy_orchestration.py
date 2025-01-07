@@ -26,7 +26,7 @@ def main():
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
     last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
-    today = datetime.now(eastern).date()-timedelta(days=3)
+    today = datetime.now(eastern).date()-timedelta(days=4)
                  
 
 
@@ -80,16 +80,16 @@ def main():
     
      # Get yesterday's results
     # save_dir = Path('screener/daily_screener_signals')
-    # today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
+    custom_date = (datetime.now(pytz.timezone('US/Eastern')) - timedelta(days=1)).strftime('%Y-%m-%d')
     
     # Load screener results
-    # screener_file = f'screener/daily_screener_signals/{today}.csv'
+    screener_file = f'screener/daily_screener_signals/{custom_date}.csv'
         
-    # screener_results = pd.read_csv(screener_file)
+    screener_results = pd.read_csv(screener_file)
     
     # Run pre-market checks
     # client = get_authenticated_client()  # Your existing function
-    # filtered_results = run_premarket_screener(client, screener_results)
+    filtered_results = run_premarket_screener(client, screener_results)
     
 if __name__ == "__main__":
     main()
