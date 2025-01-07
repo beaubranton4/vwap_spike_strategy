@@ -445,7 +445,7 @@ class ExecuteStrategy:
         """Execute the VWAP spike strategy"""
         try:
             self.logger.info("Starting VWAP spike strategy execution...")
-            self.logger.info(f"Strategy will check for entries until: {BUY_TIME_THRESHOLD[0]+timedelta(minutes=5)} ET")
+            self.logger.info(f"Strategy will check for entries until: {time(hour=9, minute=35, second=0)} ET")
             self.df = df
             
             # Print initial stock list in a clean format
@@ -517,7 +517,7 @@ class ExecuteStrategy:
             last_status_time = datetime.now(self.et_timezone)
             
             # Main trading loop - runs until buy time threshold (5m candles)
-            while self.is_running and self.get_current_time().time() < BUY_TIME_THRESHOLD[0]+timedelta(minutes=5):
+            while self.is_running and self.get_current_time().time() < time(hour=9, minute=35, second=0):
                 try:
                     if self.use_mock_data:
                         mock_message = self.streamer.generate_mock_message()
