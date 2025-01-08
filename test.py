@@ -117,17 +117,31 @@ logger = logging.getLogger('main')
 
 def main():
 
+# Load today's filtered results
+    save_dir = Path('screener/premarket_screener_signals')
+    today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
     
-    client = get_authenticated_client()
-    linked_accounts_response = client.account_linked()
-    account_hash = linked_accounts_response.json()[0].get('hashValue')
+    filtered_file = f'{save_dir}/{today}.csv'
+    if not Path(filtered_file).exists():
+        logger.error(f"No filtered results found for {today}")
+        return
+        
+    filtered_results = pd.read_csv(filtered_file)
     
-    # Set time range to last 24 hours
-    to_time = datetime.now()
-    from_time = to_time - timedelta(days=10)
+    # Execute strategy
+    strategy = ExecuteStrategy(use_mock_data=False)
+    strategy.execute_vwap_spike_strategy(filtered_results)
     
-    # Close all open SELL_SHORT orders
-    close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
+    # client = get_authenticated_client()
+    # linked_accounts_response = client.account_linked()
+    # account_hash = linked_accounts_response.json()[0].get('hashValue')
+    
+    # # Set time range to last 24 hours
+    # to_time = datetime.now()
+    # from_time = to_time - timedelta(days=10)
+    
+    # # Close all open SELL_SHORT orders
+    # close_all_open_orders(client, account_hash, from_time, to_time, 'SELL_SHORT')
     # get_todays_trades(client)
     # account_balance = get_account_balance(client)
     # get_todays_trades(client)
