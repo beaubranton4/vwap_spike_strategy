@@ -26,7 +26,7 @@ def main():
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
     last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
-    today = datetime.now(eastern).date()-timedelta(days=4)
+    today = datetime.now(eastern).date()-timedelta(days=3)
                  
 
 
@@ -89,7 +89,7 @@ def main():
     
     # Run pre-market checks
     # client = get_authenticated_client()  # Your existing function
-    filtered_results = run_premarket_screener(client, screener_results)
+    # filtered_results = run_premarket_screener(client, screener_results)
     
 if __name__ == "__main__":
     main()

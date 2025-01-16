@@ -118,20 +118,21 @@ logger = logging.getLogger('main')
 def main():
 
 # Load today's filtered results
-    save_dir = Path('screener/premarket_screener_signals')
-    today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
+    # save_dir = Path('screener/premarket_screener_signals')
+    # today = datetime.now(pytz.timezone('US/Eastern')).strftime('%Y-%m-%d')
     
-    filtered_file = f'{save_dir}/{today}.csv'
-    if not Path(filtered_file).exists():
-        logger.error(f"No filtered results found for {today}")
-        return
+    # filtered_file = f'{save_dir}/{today}.csv'
+    # if not Path(filtered_file).exists():
+    #     logger.error(f"No filtered results found for {today}")
+    #     return
         
-    filtered_results = pd.read_csv(filtered_file)
+    # filtered_results = pd.read_csv(filtered_file)
     
-    # Execute strategy
-    strategy = ExecuteStrategy(use_mock_data=False)
-    strategy.execute_vwap_spike_strategy(filtered_results)
-    
+    # # Execute strategy
+    # strategy = ExecuteStrategy(use_mock_data=False)
+    # strategy.execute_vwap_spike_strategy(filtered_results)
+    print(schedule)
+    print(days)
     # client = get_authenticated_client()
     # linked_accounts_response = client.account_linked()
     # account_hash = linked_accounts_response.json()[0].get('hashValue')

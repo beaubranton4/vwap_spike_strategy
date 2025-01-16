@@ -89,8 +89,6 @@ inputs = pd.DataFrame(columns=['Account Size',
 en = datetime.now()  # SCREENER WILL RUN AS OF THIS DAY
 st = en - timedelta(days=20)
 
-days = (en - st).days
-
 start_time = str(int(st.timestamp()) * 1000)
 end_time = str(int(en.timestamp()) * 1000)
 
@@ -141,3 +139,9 @@ valid_trading_days = pd.Series(nyse_days).dt.date
 
 en_extended = en + timedelta(days=10)
 schedule = pd.DataFrame(nyse.schedule(start_date=st, end_date=en_extended))
+# Remove January 9, 2025 from schedule
+schedule = schedule[schedule.index != pd.Timestamp('2025-01-09')]
+
+# Count unique trading days between st and en inclusive
+days = len(schedule[(schedule.index >= pd.Timestamp(st)) & (schedule.index <= pd.Timestamp(en))].index)
+

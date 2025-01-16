@@ -420,7 +420,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # Process strategies for current chunk
     # RESULT_INDEXER = len(stocks_to_trade)  # Start from current length of results
     # COMBO_INDEXER = 0
-    
+    # debug_df = pd.DataFrame()
     for strategy in combinations:
 
         ACCOUNT_SIZE = 100000  # Add initial account size
@@ -548,7 +548,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == True)]
-            # stonks.to_csv(f'./backtest_results/debugging/BACKTEST_STONKS_{ticker}.csv', index=True, header=True)
+            # debug_df = pd.concat([debug_df, stonks], ignore_index=True)
 
             #If there are no signals - skip to next stock.
             if len(stonks) == 0:
@@ -560,7 +560,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             stonks_5m = pd.DataFrame()
 
             unique_tickers_dates = stonks[['Ticker', 'Date']].drop_duplicates()
-
+            
             for _, row in unique_tickers_dates.iterrows():
                 ticker = row['Ticker']
                 date = row['Date']
@@ -607,7 +607,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
                 stonks_5m = pd.concat([stonks_5m, merged_data], ignore_index=True)
                 stonks_5m['Ok_To_Buy'] = True
 
-                stonks_5m.to_csv(f'./backtest_results/debugging/5m_test_post_{ticker}_{date.strftime("%Y-%m-%d")}.csv', index=False, header=True)
+                # stonks_5m.to_csv(f'./backtest_results/debugging/5m_test_post_{ticker}_{date.strftime("%Y-%m-%d")}.csv', index=False, header=True)
             # Save stonks_5m to a CSV file
             # stonks_5m.to_csv('./backtest_results/debugging/5m_test.csv', index=False, header=True)
             # THIS IS WHERE I CAN BRING IN 5m bars, join to stonks and use it to calculate results
@@ -764,6 +764,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         except:
             pass
 
+    # debug_df.to_csv(f'backtest_results/debugging/backtest_debug_df.csv', index=False, header=True)
     # plot = px.line(results, x = results.index.values, y = 'Account Size', title = 'Equity Curve')
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
@@ -840,10 +841,10 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         stahks['Datetime'] = pd.to_datetime(stahks['Datetime'], unit='ms').dt.tz_localize('UTC').dt.tz_convert('US/Eastern').dt.tz_localize(None)
         
         # Check data sufficiency
-        end_check = stahks['Datetime'].max()
-        start_check = stahks['Datetime'].min()
-        daydiff = end_check.weekday() - start_check.weekday()
-        days = ((end_check-start_check).days - daydiff) / 7 * 5 + min(daydiff,5) - (max(end_check.weekday() - 4, 0) % 5)
+        # end_check = stahks['Datetime'].max()
+        # start_check = stahks['Datetime'].min()
+        # daydiff = end_check.weekday() - start_check.weekday()
+        # days = ((end_check-start_check).days - daydiff) / 7 * 5 + min(daydiff,5) - (max(end_check.weekday() - 4, 0) % 5)
         
         # Add basic fields
         stahks['Ticker'] = ticker
@@ -875,6 +876,7 @@ def process_stock_data(client, ticker, period_type, period, frequency_type, freq
         stahks.drop_duplicates(['Ticker','Date','Time'], inplace=True, ignore_index=True)
         
         if len(stahks.index) < (days * tickers_per_day):
+            logger.info(f"Length of stahks: {len(stahks.index)} which is less than {days * tickers_per_day}. days: {days}, tickers_per_day: {tickers_per_day}")
             logger.error(f"Not enough data for {ticker} - skipping...")
             return None
             

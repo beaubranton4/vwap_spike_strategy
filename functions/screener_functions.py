@@ -172,6 +172,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
         # Process strategies for current chunk
         RESULT_INDEXER = len(stocks_to_trade)  # Start from current length of results
         COMBO_INDEXER = 0
+
+        debug_df = pd.DataFrame()
         
         for strategy in combinations:
             logger.info(f"Strategy parameters: {strategy}, Runtime: {datetime.now() - start_clock}")
@@ -210,7 +212,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                 stockies[ticker]['Close_Condition'] = 'False'
 
-                # stockies[ticker].to_csv(f'backtest_results/debugging/stockies_screener_{ticker}.csv', index=False, header=True)
+                debug_df = pd.concat([debug_df, stockies[ticker]], ignore_index=True)
                 
                 TEMP_SIGNAL_DAY = stockies[ticker]['Date'][0] - timedelta(days=10)
                 TARGET_ENTRY_PRICE = 0 
@@ -248,6 +250,8 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
 
                         RESULT_INDEXER +=1                
             COMBO_INDEXER +=1 
+        
+        debug_df.to_csv(f'backtest_results/debugging/screener_debug_df.csv', index=False, header=True)
         
         # Clear chunk data to free memory
         del stockies
