@@ -122,7 +122,7 @@ def run_vwap_spike_screener(client, ticker_list, combinations, day_of_backtest,
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
     #FOR TESTING
-    # all_tickers = ['JBLU','AES','PPTA','APLD','GILT','APP']
+    # all_tickers = ['ABAT','ALAB','AFRM','GLYC']
     # print(open_close_schedule)
     # Initialize results DataFrame
     stocks_to_trade = pd.DataFrame(columns=['Ticker','Target Entry','Volume Spike','Price Spike',

@@ -26,7 +26,7 @@ def main():
     # Get current time in Eastern Time
     eastern = pytz.timezone('US/Eastern')
     last_market_day = last_trading_day(datetime.now(pytz.timezone('US/Eastern')))
-    today = datetime.now(eastern).date()-timedelta(days=3)
+    today = datetime.now(eastern).date()-timedelta(days=2)
                  
 
 

@@ -364,7 +364,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     tickers_df = ticker_list[['Ticker']].dropna()
     all_tickers = tickers_df['Ticker'].unique().tolist()
 
-    # all_tickers = ['ZCAR','PTON']
+    # all_tickers = ['SMCI','ABAT','SMCI','ALAB']
 
     # Initialize chunk stockies
     stockies = {}  # Create dataframes of stock data for iteration
@@ -420,7 +420,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
     # Process strategies for current chunk
     # RESULT_INDEXER = len(stocks_to_trade)  # Start from current length of results
     # COMBO_INDEXER = 0
-    # debug_df = pd.DataFrame()
+    debug_df = pd.DataFrame()
     for strategy in combinations:
 
         ACCOUNT_SIZE = 100000  # Add initial account size
@@ -494,7 +494,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
          
             
             # Save stockies to see its structure 
-            # stockies[ticker].to_csv('backtest_results/debugging/stockies_structure.csv', index=True, header=True)
+            stockies[ticker].to_csv(f'backtest_results/debugging/stockies_structure_{ticker}.csv', index=True, header=True)
 
             ####CREATE BUY AND SELL SIGNALS IN DATA FRAME BASED ON STRATEGY PARAMETERS
 
@@ -548,7 +548,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
             
             #Consolidate tables to only days where we might buy and sell
             stonks = stockies[ticker][(stockies[ticker]['Ok_To_Buy'] == True)]
-            # debug_df = pd.concat([debug_df, stonks], ignore_index=True)
+            debug_df = pd.concat([debug_df, stonks], ignore_index=True)
 
             #If there are no signals - skip to next stock.
             if len(stonks) == 0:
@@ -764,7 +764,7 @@ def run_vwap_spike_screener_backtest(client, ticker_list, combinations,
         except:
             pass
 
-    # debug_df.to_csv(f'backtest_results/debugging/backtest_debug_df.csv', index=False, header=True)
+    debug_df.to_csv(f'backtest_results/debugging/backtest_debug_df.csv', index=False, header=True)
     # plot = px.line(results, x = results.index.values, y = 'Account Size', title = 'Equity Curve')
     # plot.show()
     current_date = datetime.now().strftime("%Y-%m-%d")
